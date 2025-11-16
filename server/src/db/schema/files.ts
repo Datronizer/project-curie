@@ -1,11 +1,11 @@
-import { pgTable, varchar } from "drizzle-orm/pg-core";
+import { pgTable, uuid, varchar } from "drizzle-orm/pg-core";
 import { baseId, timestamps } from "./base";
 import { vaults } from "./vaults";
 
 export const files = pgTable("files", {
     ...baseId,
 
-    vaultId: varchar("vault_id")
+    vaultId: uuid("vault_id")
         .notNull()
         .references(() => vaults.id, { onDelete: "cascade" }),
 

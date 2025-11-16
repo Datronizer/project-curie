@@ -1,4 +1,8 @@
+import * as dotenv from "dotenv";
+dotenv.config({ path: ".env.dev" });
+
 import { buildApp } from "./app";
+
 
 const PORT = Number(process.env.PORT || 3000);
 

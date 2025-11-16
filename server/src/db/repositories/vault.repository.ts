@@ -7,11 +7,7 @@ export class VaultRepository
 {
     public async create(data: CreateVaultDto): Promise<Vault>
     {
-        const [created] = await db
-            .insert(vaults)
-            .values(data)
-            .returning();
-
+        const [created] = await db.insert(vaults).values(data).returning();
         return created;
     }
 
@@ -22,10 +18,7 @@ export class VaultRepository
 
     public async findById(id: string): Promise<Vault>
     {
-        const [row] = await db
-            .select()
-            .from(vaults)
-            .where(eq(vaults.id, id));
+        const [row] = await db.select().from(vaults).where(eq(vaults.id, id));
 
         if (!row)
         {

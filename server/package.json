@@ -24,6 +24,7 @@
     "@types/node": "^24.10.1",
     "@types/pg": "^8.15.6",
     "dotenv": "^17.2.3",
+    "pino-pretty": "^13.1.2",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.9.3"
   }

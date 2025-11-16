@@ -11,7 +11,24 @@ import errorPlugin from "./plugins/error.plugin";
 
 export function buildApp()
 {
-    const app = fastify({ logger: true });
+    const isDevelopment = process.env.NODE_ENV !== "production";
+
+    const app = fastify({
+        logger: isDevelopment
+            ? {
+                transport: {
+                    target: "pino-pretty",
+                    options: {
+                        colorize: true,
+                        translateTime: "yyyy-mm-dd HH:MM:ss.l o",
+                        ignore: "pid,hostname",
+                        singleLine: false,
+                        messageFormat: "{msg}"
+                    }
+                }
+            }
+            : true,
+    });
 
     // Load repositories into app instance
     app.register(errorPlugin);

@@ -5,8 +5,8 @@
     "outDir": "dist",
 
     /* Transpilation targets */
-    "target": "ES2020",
-    "module": "CommonJS",
+    "target": "es2022",
+    "module": "commonjs",
     "moduleResolution": "node",
 
     /* Enable ES-style imports in CJS */
@@ -21,5 +21,6 @@
     /* Output enhancements */
     "sourceMap": true
   },
-  "include": ["src"]
+  "include": ["src"],
+  "exclude": ["node_modules", "dist", "drizzle.config.ts"]
 }

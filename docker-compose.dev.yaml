@@ -1,0 +1,20 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: vault-db-dev
+    restart: always
+    environment:
+      POSTGRES_DB: vaultdb
+      POSTGRES_USER: vaultuser
+      POSTGRES_PASSWORD: vaultpass
+    ports:
+      - "5433:5432"
+    volumes:
+      - ./dev-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vaultuser"]
+      interval: 5s
+      timeout: 3s
+      retries: 5

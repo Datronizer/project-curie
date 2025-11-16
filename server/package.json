@@ -3,10 +3,24 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "migrate": "drizzle-kit push",
+    "generate:migration": "drizzle-kit generate"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": ""
+  "description": "",
+  "dependencies": {
+    "drizzle-orm": "^0.44.7",
+    "fastify": "^5.6.2",
+    "fastify-decorators": "^3.16.1",
+    "pg": "^8.16.3"
+  },
+  "devDependencies": {
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.9.3"
+  }
 }

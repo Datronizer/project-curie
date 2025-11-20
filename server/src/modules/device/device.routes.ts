@@ -13,9 +13,11 @@ export default async function deviceRoutes(app: FastifyInstance)
         return service.register(name);
     });
 
-    app.post("/heartbeat", async (req) =>
+    app.post("/heartbeat", async (req, res) =>
     {
         const { deviceId } = req.body as any;
-        return service.heartbeat(deviceId);
+        const device = await service.heartbeat(deviceId);
+
+        return res.status(200).send(device);
     });
 }

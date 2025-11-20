@@ -3,19 +3,17 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Install dependencies
+# install deps
 COPY package*.json ./
 RUN npm install
 
-# Copy configs and scripts
+# Copy config + drizzle files
 COPY tsconfig.json ./
 COPY drizzle.config.ts ./
+COPY drizzle ./drizzle
 COPY scripts ./scripts
 
-# Copy migrations (this is the important part!)
-COPY drizzle ./drizzle
-
-# Copy source code
+# Copy source code including schema
 COPY src ./src
 
 # Build
@@ -28,16 +26,14 @@ FROM node:20-alpine
 WORKDIR /app
 ENV NODE_ENV=production
 
-# Copy runtime environment
 COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 
-# Copy scripts (needed for migrations)
-COPY --from=builder /app/scripts ./scripts
-
-# Copy drizzle config + migrations
+# Copy for migrations
 COPY --from=builder /app/drizzle.config.ts ./
 COPY --from=builder /app/drizzle ./drizzle
+COPY --from=builder /app/scripts ./scripts
+COPY --from=builder /app/src ./src
 
 CMD ["node", "dist/server.js"]

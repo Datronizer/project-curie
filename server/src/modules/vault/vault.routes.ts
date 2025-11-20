@@ -6,29 +6,29 @@ export default async function vaultRoutes(app: FastifyInstance)
 {
     const vaultRepo = new VaultRepository();
     const fileRepo = new FileRepository();
-    const service = new VaultService(vaultRepo, fileRepo);
+    const vaultService = new VaultService(vaultRepo, fileRepo);
 
     app.post("/", async (req, reply) =>
     {
         const { name } = req.body as { name: string };
-        return service.create(name);
+        return vaultService.create(name);
     });
 
     app.get("/", async () =>
     {
-        return service.list();
+        return vaultService.list();
     });
 
     app.get("/:id", async (req) =>
     {
         const { id } = req.params as { id: string };
-        return service.findOne(id);
+        return vaultService.findOne(id);
     });
 
     app.delete("/:id", async (req) =>
     {
         const { id } = req.params as { id: string };
-        await service.delete(id);
+        await vaultService.delete(id);
         return { success: true };
     });
 }

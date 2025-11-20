@@ -7,18 +7,18 @@ export class SyncService
         private syncRepo: SyncStateRepository
     ) { }
 
-    async diff(deviceId: string, fileId: string, clientHash: string)
+    async diff(deviceId: string, vaultId: string, path: string, clientHash: string)
     {
-        const file = await this.fileRepo.findById(fileId);
+        const file = await this.fileRepo.findByVaultAndPath(vaultId, path);
         if (!file) 
         {
-            throw new Error("File not found");
+            return { action: "push" };
         }
 
         const serverHash = file.hash;
         if (serverHash === clientHash)
         {
-            await this.syncRepo.updateState(deviceId, fileId, serverHash);
+            await this.syncRepo.updateState(deviceId, file.id, serverHash);
             return { action: "noop", serverHash };
         }
 

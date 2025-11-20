@@ -10,7 +10,7 @@ export default async function syncRoutes(app: FastifyInstance)
 
     app.post("/diff", async (req) =>
     {
-        const { deviceId, fileId, clientHash } = req.body as any;
-        return service.diff(deviceId, fileId, clientHash);
+        const { deviceId, vaultId, path, clientHash } = req.body as any;
+        return service.diff(deviceId, vaultId, path, clientHash);
     });
 }

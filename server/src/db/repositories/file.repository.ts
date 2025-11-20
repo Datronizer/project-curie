@@ -40,7 +40,7 @@ export class FileRepository
     public async findByVaultAndPath(
         vaultId: string,
         path: string
-    ): Promise<File>
+    ): Promise<File | undefined>
     {
         const [row] = await db
             .select()
@@ -49,13 +49,7 @@ export class FileRepository
                 and(eq(files.vaultId, vaultId), eq(files.path, path))
             );
 
-        if (!row)
-        {
-            throw new Error(
-                `File with path ${path} in vault ${vaultId} not found`
-            );
-        }
-
+        if (!row) return undefined;
         return row
     }
 

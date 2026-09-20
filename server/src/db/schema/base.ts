@@ -1,10 +1,15 @@
-import { timestamp, uuid } from "drizzle-orm/pg-core";
+import { text, integer } from "drizzle-orm/sqlite-core";
+import { randomUUID } from "node:crypto";
 
 export const baseId = {
-    id: uuid("id").primaryKey().defaultRandom(),
-}
+    id: text("id").primaryKey().$defaultFn(() => randomUUID()),
+};
 
 export const timestamps = {
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+    createdAt: integer("created_at", { mode: "timestamp" })
+        .notNull()
+        .$defaultFn(() => new Date()),
+    updatedAt: integer("updated_at", { mode: "timestamp" })
+        .notNull()
+        .$defaultFn(() => new Date()),
 };

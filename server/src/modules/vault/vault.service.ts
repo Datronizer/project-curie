@@ -1,25 +1,39 @@
-import { VaultRepository, FileRepository } from "../../db/repositories/index";
+import { VaultRepository, VaultMemberRepository, FileRepository } from "../../db/repositories/index";
 import { Vault } from "../../db/types";
 
 export class VaultService
 {
     constructor(
         private vaultRepo: VaultRepository,
+        private vaultMemberRepo: VaultMemberRepository,
         private fileRepo: FileRepository
     ) { }
 
-    public async create(name: string): Promise<Vault>
+    public async create(name: string, ownerId: string): Promise<Vault>
     {
-        return this.vaultRepo.create({ name });
+        return this.vaultRepo.create({ name, ownerId });
     }
 
-    public async list(): Promise<Vault[]>
+    public async list(userId?: string): Promise<Vault[]>
     {
+        if (userId)
+        {
+            return this.vaultRepo.listForUser(userId);
+        }
         return this.vaultRepo.list();
     }
 
-    public async findOne(id: string): Promise<Vault>
+    public async findOne(id: string, userId?: string): Promise<Vault>
     {
+        if (userId)
+        {
+            const hasAccess = await this.vaultMemberRepo.hasAccess(id, userId, "read");
+            if (!hasAccess)
+            {
+                throw new Error(`Access denied to vault ${id}`);
+            }
+        }
+
         const vault = await this.vaultRepo.findById(id);
         if (!vault)
         {
@@ -28,13 +42,15 @@ export class VaultService
         return vault;
     }
 
-    public async delete(id: string): Promise<void>
+    public async delete(id: string, userId?: string): Promise<void>
     {
-        // Optional: delete vault files first
-        const files = await this.fileRepo.listFilesInVault(id);
-        for (const f of files)
+        if (userId)
         {
-            // fileRepo can handle delete later
+            const hasAdmin = await this.vaultMemberRepo.hasAccess(id, userId, "admin");
+            if (!hasAdmin)
+            {
+                throw new Error(`Admin permission required to delete vault ${id}`);
+            }
         }
 
         return this.vaultRepo.delete(id);

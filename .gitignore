@@ -10,3 +10,6 @@ dev-db/
 local-storage/
 
 dist/
+
+.agents/
+openspec/

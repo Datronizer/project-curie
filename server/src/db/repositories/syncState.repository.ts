@@ -1,7 +1,7 @@
 import { db } from "../client";
 import { syncStates } from "../schema/syncStates";
 import { eq, and } from "drizzle-orm";
-import { SyncState, CreateSyncStateDto } from "../types";
+import { SyncState } from "../types";
 
 export class SyncStateRepository
 {
@@ -42,7 +42,7 @@ export class SyncStateRepository
     public async find(
         deviceId: string,
         fileId: string
-    ): Promise<SyncState>
+    ): Promise<SyncState | undefined>
     {
         const [row] = await db
             .select()
@@ -54,11 +54,6 @@ export class SyncStateRepository
                 )
             );
 
-        if (!row)
-        {
-            throw new Error(`SyncState for device ${deviceId} and file ${fileId} not found`);
-        }
-
         return row;
     }
 
@@ -68,5 +63,10 @@ export class SyncStateRepository
             .select()
             .from(syncStates)
             .where(eq(syncStates.deviceId, deviceId));
+    }
+
+    public async deleteForFile(fileId: string): Promise<void>
+    {
+        await db.delete(syncStates).where(eq(syncStates.fileId, fileId));
     }
 }

@@ -1,32 +1,75 @@
-import { FileRepository, FileVersionRepository } from "../../db/repositories";
-import { File, FileVersion } from "../../db/types";
+import { Readable } from "node:stream";
+import { FileRepository } from "../../db/repositories/file.repository";
+import { StorageService } from "../storage/storage.service";
+import { File } from "../../db/types";
 
 export class FileService
 {
     constructor(
         private fileRepo: FileRepository,
-        private versionRepo: FileVersionRepository
+        private storageService: StorageService
     ) { }
 
-    public async upsert(vaultId: string, path: string, content: string, hash: string): Promise<{ file: File; version: FileVersion }>
+    public async uploadStream(
+        vaultId: string,
+        relativePath: string,
+        inputStream: Readable,
+        options?: { isConflict?: boolean; deviceName?: string }
+    ): Promise<{ file: File; hash: string; size: number; conflictCopyPath?: string }>
     {
-        let file = await this.fileRepo.findByVaultAndPath(vaultId, path);
+        const result = await this.storageService.saveStream(vaultId, relativePath, inputStream, options);
 
+        const file = await this.fileRepo.upsertFile(
+            vaultId,
+            relativePath,
+            result.hash,
+            result.size,
+            new Date()
+        );
+
+        return {
+            file,
+            hash: result.hash,
+            size: result.size,
+            conflictCopyPath: result.conflictCopyPath,
+        };
+    }
+
+    public async getStream(
+        vaultId: string,
+        relativePath: string
+    ): Promise<{ stream: Readable; hash: string; size: number }>
+    {
+        const file = await this.fileRepo.findByVaultAndPath(vaultId, relativePath);
         if (!file)
         {
-            file = await this.fileRepo.create({ vaultId, path, hash });
-        }
-        else
-        {
-            file = await this.fileRepo.updateHash(file.id, hash);
+            throw new Error(`File not found at path ${relativePath}`);
         }
 
-        const version = await this.versionRepo.create({
-            fileId: file.id,
-            versionHash: hash,
-            content,
-        });
+        const stream = this.storageService.getFileReadStream(vaultId, relativePath);
+        const stats = this.storageService.getFileStats(vaultId, relativePath);
 
-        return { file, version };
+        return {
+            stream,
+            hash: file.hash,
+            size: stats.size,
+        };
+    }
+
+    public async upsertJson(
+        vaultId: string,
+        relativePath: string,
+        content: string,
+        hash: string
+    ): Promise<{ file: File }>
+    {
+        const stream = Readable.from(Buffer.from(content, "utf8"));
+        const { file } = await this.uploadStream(vaultId, relativePath, stream);
+        return { file };
+    }
+
+    public async listFiles(vaultId: string): Promise<File[]>
+    {
+        return this.fileRepo.listFilesInVault(vaultId);
     }
 }

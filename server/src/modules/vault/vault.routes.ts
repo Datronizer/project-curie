@@ -1,34 +1,67 @@
 import { FastifyInstance } from "fastify";
-import { VaultRepository, FileRepository } from "../../db/repositories";
 import { VaultService } from "./vault.service";
 
 export default async function vaultRoutes(app: FastifyInstance)
 {
-    const vaultRepo = new VaultRepository();
-    const fileRepo = new FileRepository();
-    const vaultService = new VaultService(vaultRepo, fileRepo);
+    const vaultService = new VaultService(app.vaultRepo, app.vaultMemberRepo, app.fileRepo);
 
     app.post("/", async (req, reply) =>
     {
         const { name } = req.body as { name: string };
-        return vaultService.create(name);
+        const userId = req.authenticatedUser?.id;
+
+        if (!userId)
+        {
+            return reply.status(401).send({
+                success: false,
+                error: { message: "Authenticated user required to create a vault", code: "UNAUTHORIZED", status: 401 },
+            });
+        }
+
+        const vault = await vaultService.create(name, userId);
+        return reply.status(201).send(vault);
     });
 
-    app.get("/", async () =>
+    app.get("/", async (req) =>
     {
-        return vaultService.list();
+        const userId = req.authenticatedUser?.id;
+        return vaultService.list(userId);
     });
 
-    app.get("/:id", async (req) =>
+    app.get("/:id", async (req, reply) =>
     {
         const { id } = req.params as { id: string };
-        return vaultService.findOne(id);
+        const userId = req.authenticatedUser?.id;
+
+        try
+        {
+            return await vaultService.findOne(id, userId);
+        }
+        catch (err: any)
+        {
+            return reply.status(403).send({
+                success: false,
+                error: { message: err.message, code: "FORBIDDEN", status: 403 },
+            });
+        }
     });
 
-    app.delete("/:id", async (req) =>
+    app.delete("/:id", async (req, reply) =>
     {
         const { id } = req.params as { id: string };
-        await vaultService.delete(id);
-        return { success: true };
+        const userId = req.authenticatedUser?.id;
+
+        try
+        {
+            await vaultService.delete(id, userId);
+            return { success: true };
+        }
+        catch (err: any)
+        {
+            return reply.status(403).send({
+                success: false,
+                error: { message: err.message, code: "FORBIDDEN", status: 403 },
+            });
+        }
     });
 }

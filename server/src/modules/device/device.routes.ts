@@ -1,23 +1,50 @@
 import { FastifyInstance } from "fastify";
-import { DeviceRepository } from "../../db/repositories";
 import { DeviceService } from "./device.service";
 
 export default async function deviceRoutes(app: FastifyInstance)
 {
-    const repo = new DeviceRepository();
-    const service = new DeviceService(repo);
+    const service = new DeviceService(app.deviceRepo, app.userRepo);
 
-    app.post("/register", async (req) =>
+    app.post("/register", async (req, reply) =>
     {
-        const { name } = req.body as any;
-        return service.register(name);
+        const expectedSetupKey = process.env.CURIE_SETUP_KEY || "curie-dev-master-key-secret";
+        const incomingSetupKey = req.headers["x-setup-key"];
+
+        if (!incomingSetupKey || incomingSetupKey !== expectedSetupKey)
+        {
+            return reply.status(401).send({
+                success: false,
+                error: {
+                    message: "Invalid or missing setup key in x-setup-key header",
+                    code: "UNAUTHORIZED",
+                    status: 401,
+                },
+            });
+        }
+
+        const { name, email } = (req.body as any) || {};
+        const deviceName = name || "Obsidian Client";
+        const result = await service.register(deviceName, email);
+
+        return reply.status(201).send(result);
     });
 
-    app.post("/heartbeat", async (req, res) =>
+    app.post("/heartbeat", async (req, reply) =>
     {
-        const { deviceId } = req.body as any;
-        const device = await service.heartbeat(deviceId);
+        const deviceId = (req.body as any)?.deviceId || req.authenticatedDevice?.id;
+        if (!deviceId)
+        {
+            return reply.status(400).send({
+                success: false,
+                error: {
+                    message: "deviceId is required",
+                    code: "BAD_REQUEST",
+                    status: 400,
+                },
+            });
+        }
 
-        return res.status(200).send(device);
+        const device = await service.heartbeat(deviceId);
+        return reply.status(200).send(device);
     });
 }

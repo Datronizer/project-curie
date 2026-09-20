@@ -5,10 +5,10 @@ dotenv.config({ path: ".env.dev" });
 import { defineConfig } from "drizzle-kit";
 
 export default defineConfig({
-    dialect: "postgresql",
+    dialect: "sqlite",
     schema: "./src/db/schema",
     out: "./drizzle",
     dbCredentials: {
-        url: process.env.DATABASE_URL ?? "",
+        url: process.env.DATABASE_URL || "./storage/curie.db",
     },
 });

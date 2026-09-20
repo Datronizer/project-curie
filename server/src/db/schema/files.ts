@@ -1,16 +1,15 @@
-import { pgTable, uuid, varchar } from "drizzle-orm/pg-core";
+import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
 import { baseId, timestamps } from "./base";
 import { vaults } from "./vaults";
 
-export const files = pgTable("files", {
+export const files = sqliteTable("files", {
     ...baseId,
-
-    vaultId: uuid("vault_id")
+    vaultId: text("vault_id")
         .notNull()
         .references(() => vaults.id, { onDelete: "cascade" }),
-
-    path: varchar("path").notNull(),
-    hash: varchar("hash", { length: 64 }).notNull(),
-
+    path: text("path").notNull(),
+    hash: text("hash").notNull(),
+    size: integer("size").default(0),
+    mtime: integer("mtime", { mode: "timestamp" }),
     ...timestamps,
 });

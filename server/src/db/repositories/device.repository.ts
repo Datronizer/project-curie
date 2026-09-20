@@ -15,7 +15,7 @@ export class DeviceRepository
         return created;
     }
 
-    public async updateHeartbeat(deviceId: string): Promise<Device>
+    public async updateHeartbeat(deviceId: string): Promise<Device | undefined>
     {
         const [updated] = await db
             .update(devices)
@@ -26,18 +26,36 @@ export class DeviceRepository
         return updated;
     }
 
-    public async findById(deviceId: string): Promise<Device>
+    public async findById(deviceId: string): Promise<Device | undefined>
     {
         const [row] = await db
             .select()
             .from(devices)
             .where(eq(devices.id, deviceId));
 
-        if (!row)
-        {
-            throw new Error(`Device with id ${deviceId} not found`);
-        }
+        return row;
+    }
+
+    public async findByTokenHash(tokenHash: string): Promise<Device | undefined>
+    {
+        const [row] = await db
+            .select()
+            .from(devices)
+            .where(eq(devices.tokenHash, tokenHash));
 
         return row;
+    }
+
+    public async listForUser(userId: string): Promise<Device[]>
+    {
+        return db
+            .select()
+            .from(devices)
+            .where(eq(devices.userId, userId));
+    }
+
+    public async delete(deviceId: string): Promise<void>
+    {
+        await db.delete(devices).where(eq(devices.id, deviceId));
     }
 }

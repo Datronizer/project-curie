@@ -11,28 +11,45 @@ export class FileRepository
         return created;
     }
 
-    public async updateHash(fileId: string, newHash: string): Promise<File>
+    public async updateHash(fileId: string, newHash: string, size?: number, mtime?: Date): Promise<File>
     {
         const [updated] = await db
             .update(files)
-            .set({ hash: newHash, updatedAt: new Date() })
+            .set({
+                hash: newHash,
+                size: size ?? 0,
+                mtime: mtime ?? new Date(),
+                updatedAt: new Date(),
+            })
             .where(eq(files.id, fileId))
             .returning();
 
         return updated;
     }
 
-    public async findById(fileId: string): Promise<File>
+    public async upsertFile(vaultId: string, path: string, hash: string, size?: number, mtime?: Date): Promise<File>
+    {
+        const existing = await this.findByVaultAndPath(vaultId, path);
+        if (!existing)
+        {
+            return this.create({
+                vaultId,
+                path,
+                hash,
+                size: size ?? 0,
+                mtime: mtime ?? new Date(),
+            });
+        }
+
+        return this.updateHash(existing.id, hash, size, mtime);
+    }
+
+    public async findById(fileId: string): Promise<File | undefined>
     {
         const [row] = await db
             .select()
             .from(files)
             .where(eq(files.id, fileId));
-
-        if (!row)
-        {
-            throw new Error(`File with id ${fileId} not found`);
-        }
 
         return row;
     }
@@ -49,8 +66,7 @@ export class FileRepository
                 and(eq(files.vaultId, vaultId), eq(files.path, path))
             );
 
-        if (!row) return undefined;
-        return row
+        return row;
     }
 
     public async listFilesInVault(vaultId: string): Promise<File[]>
@@ -59,5 +75,19 @@ export class FileRepository
             .select()
             .from(files)
             .where(eq(files.vaultId, vaultId));
+    }
+
+    public async delete(fileId: string): Promise<void>
+    {
+        await db.delete(files).where(eq(files.id, fileId));
+    }
+
+    public async deleteByVaultAndPath(vaultId: string, path: string): Promise<void>
+    {
+        await db
+            .delete(files)
+            .where(
+                and(eq(files.vaultId, vaultId), eq(files.path, path))
+            );
     }
 }

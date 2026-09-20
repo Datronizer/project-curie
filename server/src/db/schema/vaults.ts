@@ -1,10 +1,12 @@
-import { pgTable, varchar } from "drizzle-orm/pg-core";
+import { sqliteTable, text } from "drizzle-orm/sqlite-core";
 import { baseId, timestamps } from "./base";
+import { users } from "./users";
 
-export const vaults = pgTable("vaults", {
+export const vaults = sqliteTable("vaults", {
     ...baseId,
-
-    name: varchar("name", { length: 255 }).notNull(),
-
+    name: text("name").notNull(),
+    ownerId: text("owner_id")
+        .notNull()
+        .references(() => users.id, { onDelete: "cascade" }),
     ...timestamps,
 });

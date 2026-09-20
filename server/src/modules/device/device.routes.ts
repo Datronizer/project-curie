@@ -47,4 +47,60 @@ export default async function deviceRoutes(app: FastifyInstance)
         const device = await service.heartbeat(deviceId);
         return reply.status(200).send(device);
     });
+
+    app.get("/", async (req, reply) =>
+    {
+        const userId = req.authenticatedUser?.id;
+        if (!userId)
+        {
+            return reply.status(401).send({
+                success: false,
+                error: {
+                    message: "Authenticated user required to list devices",
+                    code: "UNAUTHORIZED",
+                    status: 401,
+                },
+            });
+        }
+
+        const devices = await service.list(userId);
+        return reply.status(200).send(devices);
+    });
+
+    app.delete("/:deviceId", async (req, reply) =>
+    {
+        const { deviceId } = req.params as { deviceId: string };
+        const userId = req.authenticatedUser?.id;
+
+        if (!userId)
+        {
+            return reply.status(401).send({
+                success: false,
+                error: {
+                    message: "Authenticated user required to revoke devices",
+                    code: "UNAUTHORIZED",
+                    status: 401,
+                },
+            });
+        }
+
+        try
+        {
+            await service.revoke(deviceId, userId);
+            return reply.status(200).send({ success: true });
+        }
+        catch (err: any)
+        {
+            const isNotFound = err.message?.includes("not found");
+            const status = isNotFound ? 404 : 403;
+            return reply.status(status).send({
+                success: false,
+                error: {
+                    message: err.message,
+                    code: isNotFound ? "NOT_FOUND" : "FORBIDDEN",
+                    status,
+                },
+            });
+        }
+    });
 }

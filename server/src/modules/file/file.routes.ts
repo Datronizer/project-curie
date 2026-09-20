@@ -175,4 +175,39 @@ export default async function fileRoutes(app: FastifyInstance)
 
     app.put("/files", handleLegacyUpsert);
     app.put("/files/", handleLegacyUpsert);
+
+    // Delete file
+    const handleDelete = async (req: any, reply: any) =>
+    {
+        const vaultId = req.params.vaultId;
+        const relativePath = req.query?.path;
+        const userId = req.authenticatedUser?.id;
+
+        if (!relativePath)
+        {
+            return reply.status(400).send({
+                success: false,
+                error: { message: "Query parameter 'path' is required", code: "BAD_REQUEST", status: 400 },
+            });
+        }
+
+        if (userId)
+        {
+            const hasAccess = await app.vaultMemberRepo.hasAccess(vaultId, userId, "write");
+            if (!hasAccess)
+            {
+                return reply.status(403).send({
+                    success: false,
+                    error: { message: "Write access denied to this vault", code: "FORBIDDEN", status: 403 },
+                });
+            }
+        }
+
+        const deleted = await fileService.deleteFile(vaultId, relativePath);
+        return reply.status(200).send({ success: true, deleted });
+    };
+
+    app.delete("/content", handleDelete);
+    app.delete("/files/content", handleDelete);
+    app.delete("/files", handleDelete);
 }

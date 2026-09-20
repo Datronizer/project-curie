@@ -55,4 +55,24 @@ export class DeviceService
         }
         return device;
     }
+
+    public async list(userId: string): Promise<Omit<Device, "tokenHash">[]>
+    {
+        const devices = await this.deviceRepo.listForUser(userId);
+        return devices.map(({ tokenHash, ...rest }) => rest);
+    }
+
+    public async revoke(deviceId: string, userId: string): Promise<void>
+    {
+        const device = await this.deviceRepo.findById(deviceId);
+        if (!device)
+        {
+            throw new Error(`Device ${deviceId} not found`);
+        }
+        if (device.userId !== userId)
+        {
+            throw new Error(`Access denied to revoke device ${deviceId}`);
+        }
+        await this.deviceRepo.delete(deviceId);
+    }
 }

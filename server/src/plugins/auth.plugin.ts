@@ -20,6 +20,19 @@ export default fp(async function authPlugin(app)
             return;
         }
 
+        // Only enforce Bearer authentication on Curie API routes
+        const isApiRoute =
+            url.startsWith("/sync") ||
+            url.startsWith("/devices") ||
+            url.startsWith("/vaults") ||
+            url.startsWith("/auth");
+
+        if (!isApiRoute)
+        {
+            // Non-API routes are served by static file handler or SPA fallback
+            return;
+        }
+
         const authHeader = req.headers.authorization;
         if (!authHeader || !authHeader.startsWith("Bearer "))
         {

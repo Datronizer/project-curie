@@ -46,6 +46,25 @@ export default async function vaultRoutes(app: FastifyInstance)
         }
     });
 
+    app.get("/:id/tree", async (req, reply) =>
+    {
+        const { id } = req.params as { id: string };
+        const userId = req.authenticatedUser?.id;
+
+        try
+        {
+            return await vaultService.getTree(id, userId);
+        }
+        catch (err: any)
+        {
+            const status = err.message?.includes("not found") ? 404 : 403;
+            return reply.status(status).send({
+                success: false,
+                error: { message: err.message, code: status === 404 ? "NOT_FOUND" : "FORBIDDEN", status },
+            });
+        }
+    });
+
     app.delete("/:id", async (req, reply) =>
     {
         const { id } = req.params as { id: string };

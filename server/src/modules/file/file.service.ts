@@ -72,4 +72,10 @@ export class FileService
     {
         return this.fileRepo.listFilesInVault(vaultId);
     }
+
+    public async deleteFile(vaultId: string, relativePath: string): Promise<boolean>
+    {
+        await this.fileRepo.deleteByVaultAndPath(vaultId, relativePath);
+        return this.storageService.deleteFile(vaultId, relativePath);
+    }
 }

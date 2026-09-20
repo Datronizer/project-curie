@@ -1,4 +1,7 @@
 import fastify from "fastify";
+import fastifyStatic from "@fastify/static";
+import path from "node:path";
+import fs from "node:fs";
 
 import { initDatabase } from "./db/init";
 import dbPlugin from "./plugins/db.plugin";
@@ -49,6 +52,17 @@ export function buildApp()
     app.register(fileRoutes, { prefix: "/vaults/:vaultId" });
     app.register(deviceRoutes, { prefix: "/devices" });
     app.register(syncRoutes, { prefix: "/sync" });
+
+    // Static Web Client & SPA fallback
+    const webDistPath = process.env.WEB_DIST_DIR || path.resolve(__dirname, "../../web/dist");
+    if (fs.existsSync(webDistPath))
+    {
+        app.register(fastifyStatic, {
+            root: webDistPath,
+            prefix: "/",
+            wildcard: false,
+        });
+    }
 
     return app;
 }

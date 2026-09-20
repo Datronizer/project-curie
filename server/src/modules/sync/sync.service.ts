@@ -34,10 +34,10 @@ export class SyncService
 
         const syncState = await this.syncRepo.find(deviceId, file.id);
 
-        // Never synced before from this device, server already has a version
+        // No previous sync state recorded for this device; preserve local edit via conflict
         if (!syncState)
         {
-            return { action: "pull", serverHash };
+            return { action: "conflict", serverHash };
         }
 
         // Server hasn't changed since last sync; client modified locally

@@ -3,7 +3,7 @@ import { VaultService } from "./vault.service";
 
 export default async function vaultRoutes(app: FastifyInstance)
 {
-    const vaultService = new VaultService(app.vaultRepo, app.vaultMemberRepo, app.fileRepo);
+    const vaultService = new VaultService(app.vaultRepo, app.vaultMemberRepo, app.fileRepo, app.storageService);
 
     app.post("/", async (req, reply) =>
     {

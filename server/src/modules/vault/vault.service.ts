@@ -1,17 +1,29 @@
 import { VaultRepository, VaultMemberRepository, FileRepository } from "../../db/repositories/index";
+import { StorageService } from "../storage/storage.service";
 import { Vault } from "../../db/types";
+import fs from "node:fs";
 
 export class VaultService
 {
     constructor(
         private vaultRepo: VaultRepository,
         private vaultMemberRepo: VaultMemberRepository,
-        private fileRepo: FileRepository
+        private fileRepo: FileRepository,
+        private storageService?: StorageService
     ) { }
 
     public async create(name: string, ownerId: string): Promise<Vault>
     {
-        return this.vaultRepo.create({ name, ownerId });
+        const vault = await this.vaultRepo.create({ name, ownerId });
+        if (this.storageService)
+        {
+            const vaultDir = this.storageService.getVaultDir(vault.id);
+            if (!fs.existsSync(vaultDir))
+            {
+                fs.mkdirSync(vaultDir, { recursive: true });
+            }
+        }
+        return vault;
     }
 
     public async list(userId?: string): Promise<Vault[]>

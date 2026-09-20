@@ -5,6 +5,7 @@ import dbPlugin from "./plugins/db.plugin";
 import authPlugin from "./plugins/auth.plugin";
 import errorPlugin from "./plugins/error.plugin";
 
+import authRoutes from "./modules/auth/auth.routes";
 import deviceRoutes from "./modules/device/device.routes";
 import fileRoutes from "./modules/file/file.routes";
 import syncRoutes from "./modules/sync/sync.routes";
@@ -43,6 +44,7 @@ export function buildApp()
     app.get("/health", async () => ({ status: "ok", service: "project-curie-api" }));
 
     // Module routes
+    app.register(authRoutes, { prefix: "/auth" });
     app.register(vaultRoutes, { prefix: "/vaults" });
     app.register(fileRoutes, { prefix: "/vaults/:vaultId" });
     app.register(deviceRoutes, { prefix: "/devices" });

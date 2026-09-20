@@ -10,7 +10,12 @@ export default fp(async function authPlugin(app)
         const method = req.method;
 
         // Public endpoints
-        if (url === "/health" || url.startsWith("/health?") || (url === "/devices/register" && method === "POST"))
+        if (
+            url === "/health" ||
+            url.startsWith("/health?") ||
+            (url === "/devices/register" && method === "POST") ||
+            (url.startsWith("/auth/") && method === "POST")
+        )
         {
             return;
         }

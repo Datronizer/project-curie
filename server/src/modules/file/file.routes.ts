@@ -68,6 +68,13 @@ export default async function fileRoutes(app: FastifyInstance)
         try
         {
             const { stream, hash, size } = await fileService.getStream(vaultId, relativePath);
+            const file = await app.fileRepo.findByVaultAndPath(vaultId, relativePath);
+            const effectiveDeviceId = req.authenticatedDevice?.id;
+            if (effectiveDeviceId && file)
+            {
+                await app.syncStateRepo.updateState(effectiveDeviceId, file.id, hash);
+            }
+
             reply.header("x-curie-hash", hash);
             reply.header("Content-Length", size);
             reply.header("Content-Type", "application/octet-stream");
@@ -120,6 +127,12 @@ export default async function fileRoutes(app: FastifyInstance)
             deviceName,
         });
 
+        const effectiveDeviceId = req.authenticatedDevice?.id;
+        if (effectiveDeviceId)
+        {
+            await app.syncStateRepo.updateState(effectiveDeviceId, result.file.id, result.hash);
+        }
+
         return reply.status(200).send({
             success: true,
             file: result.file,
@@ -151,7 +164,13 @@ export default async function fileRoutes(app: FastifyInstance)
             }
         }
 
-        return fileService.upsertJson(vaultId, path, content, hash);
+        const result = await fileService.upsertJson(vaultId, path, content, hash);
+        const effectiveDeviceId = req.authenticatedDevice?.id;
+        if (effectiveDeviceId && result.file)
+        {
+            await app.syncStateRepo.updateState(effectiveDeviceId, result.file.id, hash);
+        }
+        return result;
     };
 
     app.put("/files", handleLegacyUpsert);

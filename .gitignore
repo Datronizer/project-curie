@@ -3,11 +3,12 @@ node_modules/
 # Environment files
 .env*
 
-db-data/
-storage/
+/db-data/
+/storage/
+server/storage/
 
-dev-db/
-local-storage/
+/dev-db/
+/local-storage/
 
 dist/
 

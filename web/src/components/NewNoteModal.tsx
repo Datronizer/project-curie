@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { TreeNode } from "../api/client";
-import { FilePlus, Folder, X } from "lucide-react";
+import { LuFilePlus, LuFolder, LuX } from "react-icons/lu";
 
 interface NewNoteModalProps {
   tree: TreeNode[];
@@ -68,7 +68,7 @@ export default function NewNoteModal({
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-2 text-white">
             <div className="w-8 h-8 rounded-lg bg-indigo-600/30 border border-indigo-500/40 flex items-center justify-center text-indigo-400">
-              <FilePlus className="w-4 h-4" />
+              <LuFilePlus className="w-4 h-4" />
             </div>
             <h2 className="text-base font-bold">Create New Note</h2>
           </div>
@@ -76,7 +76,7 @@ export default function NewNoteModal({
             onClick={onClose}
             className="p-1 rounded-md text-slate-400 hover:text-white hover:bg-slate-800 transition"
           >
-            <X className="w-4 h-4" />
+            <LuX className="w-4 h-4" />
           </button>
         </div>
 
@@ -106,7 +106,7 @@ export default function NewNoteModal({
               Destination Folder
             </label>
             <div className="relative">
-              <Folder className="absolute left-3 top-2.5 w-4 h-4 text-slate-500 pointer-events-none" />
+              <LuFolder className="absolute left-3 top-2.5 w-4 h-4 text-slate-500 pointer-events-none" />
               <select
                 value={selectedFolder}
                 onChange={(e) => setSelectedFolder(e.target.value)}

@@ -69,8 +69,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         return next;
       });
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to refresh vaults:", err);
+      if (err?.message?.includes("401") || err?.message?.includes("UNAUTHORIZED") || err?.message?.includes("Unauthorized")) {
+        logout();
+      }
     }
   }, []);
 

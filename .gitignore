@@ -10,7 +10,11 @@ server/storage/
 /dev-db/
 /local-storage/
 
+# builds
 dist/
 
 .agents/
 openspec/
+
+# Local Obsidian client repository
+/client/

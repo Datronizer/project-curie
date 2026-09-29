@@ -1,18 +1,19 @@
 import { useState, useMemo } from "react";
 import { TreeNode } from "../api/client";
 import {
-  ChevronDown,
-  ChevronRight,
-  Folder,
-  FolderOpen,
-  FileText,
-  FileCode,
-  Image as ImageIcon,
-  File,
-  Search,
-  Plus,
-  RefreshCw,
-} from "lucide-react";
+  LuChevronDown,
+  LuChevronRight,
+  LuFolder,
+  LuFolderOpen,
+  LuFileText,
+  LuFileCode,
+  LuImage as LuImageIcon,
+  LuFile,
+  LuSearch,
+  LuPlus,
+  LuRefreshCw,
+  LuMusic,
+} from "react-icons/lu";
 
 interface FileTreeSidebarProps {
   tree: TreeNode[];
@@ -79,15 +80,21 @@ export default function FileTreeSidebar({
   const getFileIcon = (fileName: string) => {
     const ext = fileName.split(".").pop()?.toLowerCase();
     if (ext === "md") {
-      return <FileText className="w-4 h-4 text-indigo-400 flex-shrink-0" />;
+      return <LuFileText className="w-4 h-4 text-indigo-400 flex-shrink-0" />;
     }
     if (ext === "pdf") {
-      return <FileCode className="w-4 h-4 text-rose-400 flex-shrink-0" />;
+      return <LuFileCode className="w-4 h-4 text-rose-400 flex-shrink-0" />;
+    }
+    if (["m4a", "mp3", "wav", "aac", "ogg", "amr"].includes(ext || "")) {
+      return <LuMusic className="w-4 h-4 text-purple-400 flex-shrink-0" />;
+    }
+    if (ext === "sdocx") {
+      return <LuFileText className="w-4 h-4 text-amber-400 flex-shrink-0" />;
     }
     if (["png", "jpg", "jpeg", "gif", "svg", "webp"].includes(ext || "")) {
-      return <ImageIcon className="w-4 h-4 text-emerald-400 flex-shrink-0" />;
+      return <LuImageIcon className="w-4 h-4 text-emerald-400 flex-shrink-0" />;
     }
-    return <File className="w-4 h-4 text-slate-400 flex-shrink-0" />;
+    return <LuFile className="w-4 h-4 text-slate-400 flex-shrink-0" />;
   };
 
   const renderNode = (node: TreeNode, depth: number = 0) => {
@@ -104,14 +111,14 @@ export default function FileTreeSidebar({
             style={{ paddingLeft: `${depth * 14 + 8}px` }}
           >
             {isExpanded ? (
-              <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-200" />
+              <LuChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-200" />
             ) : (
-              <ChevronRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-slate-300" />
+              <LuChevronRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-slate-300" />
             )}
             {isExpanded ? (
-              <FolderOpen className="w-4 h-4 text-indigo-400/80" />
+              <LuFolderOpen className="w-4 h-4 text-indigo-400/80" />
             ) : (
-              <Folder className="w-4 h-4 text-slate-400" />
+              <LuFolder className="w-4 h-4 text-slate-400" />
             )}
             <span className="font-medium truncate">{node.name}</span>
           </button>
@@ -157,7 +164,7 @@ export default function FileTreeSidebar({
               title="New Note"
               className="p-1 rounded-md hover:bg-slate-800 text-slate-400 hover:text-white transition"
             >
-              <Plus className="w-4 h-4 text-indigo-400" />
+              <LuPlus className="w-4 h-4 text-indigo-400" />
             </button>
             <button
               onClick={onRefresh}
@@ -165,7 +172,7 @@ export default function FileTreeSidebar({
               title="Refresh tree"
               className="p-1 rounded-md hover:bg-slate-800 text-slate-400 hover:text-white transition disabled:opacity-50"
             >
-              <RefreshCw
+              <LuRefreshCw
                 className={`w-3.5 h-3.5 ${isLoading ? "animate-spin" : ""}`}
               />
             </button>
@@ -173,7 +180,7 @@ export default function FileTreeSidebar({
         </div>
 
         <div className="relative">
-          <Search className="absolute left-2.5 top-2 w-3.5 h-3.5 text-slate-500 pointer-events-none" />
+          <LuSearch className="absolute left-2.5 top-2 w-3.5 h-3.5 text-slate-500 pointer-events-none" />
           <input
             type="text"
             value={searchQuery}

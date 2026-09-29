@@ -1,6 +1,14 @@
 import { useState, FormEvent } from "react";
 import { useAuth } from "../contexts/AuthContext";
-import { Lock, Mail, Laptop, AlertCircle, Loader2 } from "lucide-react";
+import {
+  LuLock,
+  LuMail,
+  LuLaptop,
+  LuCircleAlert,
+  LuLoaderCircle,
+  LuServer,
+} from "react-icons/lu";
+import ServerSettingsModal from "../components/ServerSettingsModal";
 
 export default function LoginView() {
   const { login } = useAuth();
@@ -10,6 +18,7 @@ export default function LoginView() {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showServerModal, setShowServerModal] = useState(false);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -70,7 +79,7 @@ export default function LoginView() {
 
         {error && (
           <div className="mb-6 p-3 rounded-lg bg-red-500/10 border border-red-500/30 flex items-start space-x-3 text-red-400 text-sm">
-            <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+            <LuCircleAlert className="w-5 h-5 flex-shrink-0 mt-0.5" />
             <span>{error}</span>
           </div>
         )}
@@ -81,7 +90,7 @@ export default function LoginView() {
               Email Address
             </label>
             <div className="relative">
-              <Mail className="absolute left-3 top-2.5 w-5 h-5 text-slate-500 pointer-events-none" />
+              <LuMail className="absolute left-3 top-2.5 w-5 h-5 text-slate-500 pointer-events-none" />
               <input
                 type="email"
                 required
@@ -99,7 +108,7 @@ export default function LoginView() {
               Password
             </label>
             <div className="relative">
-              <Lock className="absolute left-3 top-2.5 w-5 h-5 text-slate-500 pointer-events-none" />
+              <LuLock className="absolute left-3 top-2.5 w-5 h-5 text-slate-500 pointer-events-none" />
               <input
                 type="password"
                 required
@@ -127,7 +136,7 @@ export default function LoginView() {
                   Device Name
                 </label>
                 <div className="relative">
-                  <Laptop className="absolute left-3 top-2.5 w-5 h-5 text-slate-500 pointer-events-none" />
+                  <LuLaptop className="absolute left-3 top-2.5 w-5 h-5 text-slate-500 pointer-events-none" />
                   <input
                     type="text"
                     value={deviceName}
@@ -147,7 +156,7 @@ export default function LoginView() {
           >
             {loading ? (
               <>
-                <Loader2 className="w-4 h-4 animate-spin" />
+                <LuLoaderCircle className="w-4 h-4 animate-spin" />
                 <span>Signing in...</span>
               </>
             ) : (
@@ -156,9 +165,22 @@ export default function LoginView() {
           </button>
         </form>
 
-        <div className="mt-8 pt-6 border-t border-slate-800 text-center text-xs text-slate-500">
-          Project Curie • Self-Hosted Knowledge Sync
+        <div className="mt-8 pt-6 border-t border-slate-800 flex items-center justify-between text-xs text-slate-500">
+          <span>Project Curie • Sync</span>
+          <button
+            type="button"
+            onClick={() => setShowServerModal(true)}
+            className="flex items-center space-x-1.5 text-indigo-400 hover:text-indigo-300 transition"
+          >
+            <LuServer className="w-3.5 h-3.5" />
+            <span>Server Settings</span>
+          </button>
         </div>
+
+        <ServerSettingsModal
+          isOpen={showServerModal}
+          onClose={() => setShowServerModal(false)}
+        />
       </div>
     </div>
   );

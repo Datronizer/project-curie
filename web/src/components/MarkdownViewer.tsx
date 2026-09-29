@@ -1,12 +1,121 @@
-import { useMemo } from "react";
+import { useMemo, useState, useRef, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Copy, Check } from "lucide-react";
-import { useState } from "react";
+import {
+  LuCopy,
+  LuCheck,
+  LuPlay,
+  LuPause,
+  LuMusic,
+  LuLoaderCircle,
+} from "react-icons/lu";
+import { useAuth } from "../contexts/AuthContext";
+import { api } from "../api/client";
 
 interface MarkdownViewerProps {
   content: string;
   onNavigateWikiLink: (target: string) => void;
+}
+
+function InlineAudioPlayer({ vaultId, filePath }: { vaultId: string; filePath: string }) {
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const fileName = filePath.split("/").pop() || filePath;
+
+  const handlePlayToggle = async () => {
+    if (!blobUrl) {
+      try {
+        setLoading(true);
+        const blob = await api.getBlob(vaultId, filePath);
+        const url = URL.createObjectURL(blob);
+        setBlobUrl(url);
+        setTimeout(() => {
+          audioRef.current?.play().catch(() => {});
+          setIsPlaying(true);
+        }, 50);
+      } catch (err) {
+        console.error("Failed to load inline audio:", err);
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
+    if (isPlaying) {
+      audioRef.current?.pause();
+      setIsPlaying(false);
+    } else {
+      audioRef.current?.play().catch(() => {});
+      setIsPlaying(true);
+    }
+  };
+
+  return (
+    <div className="not-prose my-3 p-3 rounded-xl bg-slate-900/90 border border-purple-500/30 flex items-center space-x-3 max-w-md shadow-md">
+      <audio
+        ref={audioRef}
+        src={blobUrl || undefined}
+        onPlay={() => setIsPlaying(true)}
+        onPause={() => setIsPlaying(false)}
+        onEnded={() => setIsPlaying(false)}
+      />
+      <button
+        type="button"
+        onClick={handlePlayToggle}
+        disabled={loading}
+        className="w-9 h-9 rounded-lg bg-purple-600 hover:bg-purple-500 active:bg-purple-700 text-white flex items-center justify-center flex-shrink-0 transition shadow-sm disabled:opacity-50"
+      >
+        {loading ? (
+          <LuLoaderCircle className="w-4 h-4 animate-spin" />
+        ) : isPlaying ? (
+          <LuPause className="w-4 h-4" />
+        ) : (
+          <LuPlay className="w-4 h-4 ml-0.5" />
+        )}
+      </button>
+      <div className="flex-1 truncate">
+        <p className="text-xs font-medium text-white truncate">{fileName}</p>
+        <p className="text-[10px] text-purple-400 flex items-center gap-1 mt-0.5">
+          <LuMusic className="w-3 h-3" />
+          <span>Embedded Recording</span>
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function InlineImageViewer({ vaultId, filePath }: { vaultId: string; filePath: string }) {
+  const [src, setSrc] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    let urlToRevoke: string | null = null;
+    api.getBlob(vaultId, filePath).then((blob) => {
+      if (!active) return;
+      const url = URL.createObjectURL(blob);
+      urlToRevoke = url;
+      setSrc(url);
+    }).catch(console.error);
+
+    return () => {
+      active = false;
+      if (urlToRevoke) URL.revokeObjectURL(urlToRevoke);
+    };
+  }, [vaultId, filePath]);
+
+  if (!src) {
+    return <span className="text-xs text-slate-500 italic">Loading attachment...</span>;
+  }
+
+  return (
+    <img
+      src={src}
+      alt={filePath}
+      className="my-3 rounded-xl border border-slate-800 max-h-96 object-contain shadow-md"
+    />
+  );
 }
 
 function CodeBlock({ children, className }: { children: any; className?: string }) {
@@ -31,12 +140,12 @@ function CodeBlock({ children, className }: { children: any; className?: string 
         >
           {copied ? (
             <>
-              <Check className="w-3.5 h-3.5 text-emerald-400" />
+              <LuCheck className="w-3.5 h-3.5 text-emerald-400" />
               <span className="text-emerald-400">Copied</span>
             </>
           ) : (
             <>
-              <Copy className="w-3.5 h-3.5" />
+              <LuCopy className="w-3.5 h-3.5" />
               <span>Copy</span>
             </>
           )}
@@ -53,16 +162,29 @@ export default function MarkdownViewer({
   content,
   onNavigateWikiLink,
 }: MarkdownViewerProps) {
-  // Pre-process Obsidian wikilinks: [[Target Note]] or [[Target Note|Label]] -> [Label](wikilink:Target%20Note)
+  const { activeVault } = useAuth();
+
+  // Pre-process Obsidian embeds and wikilinks:
+  // ![[Recording.m4a]] -> [Recording.m4a](wikilink_embed:Recording.m4a)
+  // [[Note Name]] -> [Note Name](wikilink:Note%20Name)
   const processedContent = useMemo(() => {
     if (!content) return "";
 
+    const embedRegex = /!\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g;
+    let text = content.replace(embedRegex, (_, target, alias) => {
+      const cleanTarget = target.trim();
+      const label = alias ? alias.trim() : cleanTarget;
+      return `[${label}](wikilink_embed:${encodeURIComponent(cleanTarget)})`;
+    });
+
     const wikiLinkRegex = /\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g;
-    return content.replace(wikiLinkRegex, (_, target, alias) => {
+    text = text.replace(wikiLinkRegex, (_, target, alias) => {
       const cleanTarget = target.trim();
       const label = alias ? alias.trim() : cleanTarget;
       return `[${label}](wikilink:${encodeURIComponent(cleanTarget)})`;
     });
+
+    return text;
   }, [content]);
 
   return (
@@ -71,8 +193,33 @@ export default function MarkdownViewer({
         remarkPlugins={[remarkGfm]}
         components={{
           a: ({ href, children, ...props }) => {
+            if (href?.startsWith("wikilink_embed:")) {
+              const target = decodeURIComponent(href.slice(15));
+              const ext = target.split(".").pop()?.toLowerCase();
+              if (["m4a", "mp3", "wav", "aac", "ogg", "amr"].includes(ext || "")) {
+                return activeVault ? (
+                  <InlineAudioPlayer vaultId={activeVault.id} filePath={target} />
+                ) : (
+                  <span className="text-xs text-purple-400">Audio: {target}</span>
+                );
+              }
+              if (["png", "jpg", "jpeg", "gif", "svg", "webp"].includes(ext || "")) {
+                return activeVault ? (
+                  <InlineImageViewer vaultId={activeVault.id} filePath={target} />
+                ) : (
+                  <span className="text-xs text-emerald-400">Image: {target}</span>
+                );
+              }
+            }
+
             if (href?.startsWith("wikilink:")) {
               const target = decodeURIComponent(href.slice(9));
+              const ext = target.split(".").pop()?.toLowerCase();
+              if (["m4a", "mp3", "wav", "aac", "ogg", "amr"].includes(ext || "")) {
+                return activeVault ? (
+                  <InlineAudioPlayer vaultId={activeVault.id} filePath={target} />
+                ) : null;
+              }
               return (
                 <button
                   type="button"

@@ -4,8 +4,9 @@ import { api, TreeNode } from "../api/client";
 import FileTreeSidebar from "../components/FileTreeSidebar";
 import NoteEditor from "../components/NoteEditor";
 import PdfViewer from "../components/PdfViewer";
+import AudioPlayer from "../components/AudioPlayer";
 import NewNoteModal from "../components/NewNoteModal";
-import { FileText, Loader2, BookOpen } from "lucide-react";
+import { LuFileText, LuLoaderCircle, LuBookOpen } from "react-icons/lu";
 
 export default function NotesView() {
   const { activeVault } = useAuth();
@@ -36,13 +37,19 @@ export default function NotesView() {
     setFileContent("");
   }, [activeVault, loadTree]);
 
+  const isAudioFile = (p: string | null) => {
+    if (!p) return false;
+    const ext = p.split(".").pop()?.toLowerCase();
+    return ["m4a", "mp3", "wav", "aac", "ogg", "amr"].includes(ext || "");
+  };
+
   // Load selected file
   const handleSelectFile = async (path: string) => {
     if (!activeVault) return;
     setActivePath(path);
 
-    if (path.toLowerCase().endsWith(".pdf")) {
-      // PDF handled by PdfViewer component directly
+    if (path.toLowerCase().endsWith(".pdf") || isAudioFile(path)) {
+      // PDF and Audio handled by dedicated players directly
       return;
     }
 
@@ -113,7 +120,7 @@ export default function NotesView() {
   if (!activeVault) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-slate-500">
-        <BookOpen className="w-12 h-12 text-slate-600 mb-3" />
+        <LuBookOpen className="w-12 h-12 text-slate-600 mb-3" />
         <p className="text-sm font-medium text-slate-300">No Active Vault</p>
         <p className="text-xs mt-1">Please select or create a vault in the top bar</p>
       </div>
@@ -121,6 +128,7 @@ export default function NotesView() {
   }
 
   const isPdf = activePath?.toLowerCase().endsWith(".pdf");
+  const isAudio = isAudioFile(activePath);
 
   return (
     <div className="flex-1 flex h-full overflow-hidden">
@@ -138,12 +146,14 @@ export default function NotesView() {
       <div className="flex-1 flex flex-col h-full bg-slate-950 overflow-hidden">
         {loadingFile ? (
           <div className="flex-1 flex flex-col items-center justify-center text-slate-400">
-            <Loader2 className="w-7 h-7 animate-spin text-indigo-500 mb-2" />
+            <LuLoaderCircle className="w-7 h-7 animate-spin text-indigo-500 mb-2" />
             <span className="text-xs">Loading note...</span>
           </div>
         ) : activePath ? (
           isPdf ? (
             <PdfViewer vaultId={activeVault.id} filePath={activePath} />
+          ) : isAudio ? (
+            <AudioPlayer vaultId={activeVault.id} filePath={activePath} />
           ) : (
             <NoteEditor
               key={activePath}
@@ -155,7 +165,7 @@ export default function NotesView() {
           )
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-slate-500">
-            <FileText className="w-12 h-12 text-slate-700 mb-3" />
+            <LuFileText className="w-12 h-12 text-slate-700 mb-3" />
             <h3 className="text-base font-medium text-slate-300">No Note Selected</h3>
             <p className="text-xs mt-1 text-slate-500 max-w-sm">
               Select a note or document from the explorer sidebar, or create a new note to start writing.

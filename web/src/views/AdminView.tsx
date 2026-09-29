@@ -2,16 +2,16 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { api, Device, TreeNode } from "../api/client";
 import {
-  Laptop,
-  Trash2,
-  AlertTriangle,
-  CheckCircle2,
-  RefreshCw,
-  Loader2,
-  Shield,
-  GitMerge,
-  ArrowRight,
-} from "lucide-react";
+  LuLaptop,
+  LuTrash2,
+  LuTriangleAlert,
+  LuCircleCheck,
+  LuRefreshCw,
+  LuLoaderCircle,
+  LuShield,
+  LuGitMerge,
+  LuArrowRight,
+} from "react-icons/lu";
 
 interface ConflictInfo {
   conflictPath: string;
@@ -219,7 +219,7 @@ export default function AdminView() {
       <div className="px-6 pt-5 pb-3 border-b border-slate-800 flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-white flex items-center gap-2">
-            <Shield className="w-5 h-5 text-indigo-400" />
+            <LuShield className="w-5 h-5 text-indigo-400" />
             <span>Admin Portal</span>
           </h1>
           <p className="text-xs text-slate-400 mt-0.5">
@@ -236,7 +236,7 @@ export default function AdminView() {
                 : "text-slate-400 hover:text-white"
             }`}
           >
-            <Laptop className="w-3.5 h-3.5" />
+            <LuLaptop className="w-3.5 h-3.5" />
             <span>Devices ({devices.length})</span>
           </button>
           <button
@@ -247,7 +247,7 @@ export default function AdminView() {
                 : "text-slate-400 hover:text-white"
             }`}
           >
-            <GitMerge className="w-3.5 h-3.5" />
+            <LuGitMerge className="w-3.5 h-3.5" />
             <span>Sync Conflicts ({conflictList.length})</span>
           </button>
         </div>
@@ -267,7 +267,7 @@ export default function AdminView() {
                 disabled={loadingDevices}
                 className="flex items-center space-x-1 text-xs text-indigo-400 hover:text-indigo-300 transition"
               >
-                <RefreshCw className={`w-3 h-3 ${loadingDevices ? "animate-spin" : ""}`} />
+                <LuRefreshCw className={`w-3 h-3 ${loadingDevices ? "animate-spin" : ""}`} />
                 <span>Refresh</span>
               </button>
             </div>
@@ -280,7 +280,7 @@ export default function AdminView() {
 
             {loadingDevices ? (
               <div className="py-12 text-center text-slate-500">
-                <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-indigo-500" />
+                <LuLoaderCircle className="w-6 h-6 animate-spin mx-auto mb-2 text-indigo-500" />
                 <span className="text-xs">Loading registered devices...</span>
               </div>
             ) : devices.length === 0 ? (
@@ -300,7 +300,7 @@ export default function AdminView() {
                     >
                       <div className="flex items-center space-x-3.5">
                         <div className="w-10 h-10 rounded-xl bg-slate-800/80 border border-slate-700/60 flex items-center justify-center text-slate-300">
-                          <Laptop className="w-5 h-5 text-indigo-400" />
+                          <LuLaptop className="w-5 h-5 text-indigo-400" />
                         </div>
                         <div>
                           <div className="flex items-center space-x-2">
@@ -341,7 +341,7 @@ export default function AdminView() {
                         disabled={revokingId === d.id}
                         className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg border border-red-500/30 text-red-400 hover:bg-red-500/10 text-xs font-medium transition disabled:opacity-50"
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
+                        <LuTrash2 className="w-3.5 h-3.5" />
                         <span>{revokingId === d.id ? "Revoking..." : "Revoke"}</span>
                       </button>
                     </div>
@@ -367,21 +367,21 @@ export default function AdminView() {
                 disabled={loadingConflicts}
                 className="flex items-center space-x-1 text-xs text-indigo-400 hover:text-indigo-300 transition"
               >
-                <RefreshCw className={`w-3 h-3 ${loadingConflicts ? "animate-spin" : ""}`} />
+                <LuRefreshCw className={`w-3 h-3 ${loadingConflicts ? "animate-spin" : ""}`} />
                 <span>Rescan Vault</span>
               </button>
             </div>
 
             {resolutionSuccess && (
               <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs flex items-center space-x-2">
-                <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+                <LuCircleCheck className="w-4 h-4 flex-shrink-0" />
                 <span>{resolutionSuccess}</span>
               </div>
             )}
 
             {conflictList.length === 0 ? (
               <div className="p-10 text-center border border-dashed border-slate-800 rounded-2xl bg-slate-900/30">
-                <CheckCircle2 className="w-10 h-10 text-emerald-400 mx-auto mb-2 opacity-80" />
+                <LuCircleCheck className="w-10 h-10 text-emerald-400 mx-auto mb-2 opacity-80" />
                 <h3 className="text-sm font-semibold text-white">No Sync Conflicts</h3>
                 <p className="text-xs text-slate-500 mt-1">
                   All notes in vault "{activeVault?.name}" are fully synchronized and up to date.
@@ -407,7 +407,7 @@ export default function AdminView() {
                         }`}
                       >
                         <div className="flex items-center space-x-1.5 font-medium text-amber-300">
-                          <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0 text-amber-400" />
+                          <LuTriangleAlert className="w-3.5 h-3.5 flex-shrink-0 text-amber-400" />
                           <span className="truncate">{c.primaryPath}</span>
                         </div>
                         <div className="text-[10px] text-slate-500 mt-1 truncate">
@@ -422,7 +422,7 @@ export default function AdminView() {
                 <div className="md:col-span-2 border border-slate-800 rounded-xl bg-slate-900/60 p-4 flex flex-col min-h-[400px]">
                   {loadingDiff ? (
                     <div className="flex-1 flex flex-col items-center justify-center text-slate-400">
-                      <Loader2 className="w-6 h-6 animate-spin text-indigo-500 mb-2" />
+                      <LuLoaderCircle className="w-6 h-6 animate-spin text-indigo-500 mb-2" />
                       <span className="text-xs">Loading note versions...</span>
                     </div>
                   ) : selectedConflict ? (
@@ -483,7 +483,7 @@ export default function AdminView() {
                     </div>
                   ) : (
                     <div className="flex-1 flex flex-col items-center justify-center text-slate-500 text-xs text-center p-6">
-                      <ArrowRight className="w-8 h-8 text-slate-600 mb-2" />
+                      <LuArrowRight className="w-8 h-8 text-slate-600 mb-2" />
                       <span>Select a conflict note from the left list to inspect differences and resolve</span>
                     </div>
                   )}

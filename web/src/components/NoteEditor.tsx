@@ -1,15 +1,15 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import MarkdownViewer from "./MarkdownViewer";
 import {
-  Eye,
-  Edit3,
-  Columns,
-  Save,
-  CheckCircle2,
-  Clock,
-  AlertCircle,
-  FileText,
-} from "lucide-react";
+  LuEye,
+  LuPen,
+  LuColumns2,
+  LuSave,
+  LuCircleCheck,
+  LuClock,
+  LuCircleAlert,
+  LuFileText,
+} from "react-icons/lu";
 
 interface NoteEditorProps {
   filePath: string;
@@ -119,7 +119,7 @@ export default function NoteEditor({
       <div className="h-11 px-4 border-b border-slate-800 bg-slate-900/60 flex items-center justify-between select-none">
         {/* Note Name & Dirty State */}
         <div className="flex items-center space-x-2">
-          <FileText className="w-4 h-4 text-indigo-400" />
+          <LuFileText className="w-4 h-4 text-indigo-400" />
           <span className="font-semibold text-xs text-white truncate max-w-[200px] sm:max-w-md">
             {fileName}
           </span>
@@ -131,12 +131,12 @@ export default function NoteEditor({
             </span>
           ) : isSaving ? (
             <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-indigo-500/15 text-indigo-300 border border-indigo-500/30">
-              <Clock className="w-2.5 h-2.5 mr-1 animate-spin" />
+              <LuClock className="w-2.5 h-2.5 mr-1 animate-spin" />
               Saving...
             </span>
           ) : (
             <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
-              <CheckCircle2 className="w-2.5 h-2.5 mr-1" />
+              <LuCircleCheck className="w-2.5 h-2.5 mr-1" />
               Saved
             </span>
           )}
@@ -161,7 +161,7 @@ export default function NoteEditor({
                   : "hover:text-slate-200"
               }`}
             >
-              <Edit3 className="w-3.5 h-3.5" />
+              <LuPen className="w-3.5 h-3.5" />
             </button>
             <button
               onClick={() => setMode("split")}
@@ -172,7 +172,7 @@ export default function NoteEditor({
                   : "hover:text-slate-200"
               }`}
             >
-              <Columns className="w-3.5 h-3.5" />
+              <LuColumns2 className="w-3.5 h-3.5" />
             </button>
             <button
               onClick={() => setMode("preview")}
@@ -183,7 +183,7 @@ export default function NoteEditor({
                   : "hover:text-slate-200"
               }`}
             >
-              <Eye className="w-3.5 h-3.5" />
+              <LuEye className="w-3.5 h-3.5" />
             </button>
           </div>
 
@@ -193,7 +193,7 @@ export default function NoteEditor({
             disabled={!isDirty || isSaving}
             className="flex items-center space-x-1 px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white text-xs font-medium transition disabled:opacity-40 disabled:cursor-not-allowed shadow-sm"
           >
-            <Save className="w-3.5 h-3.5" />
+            <LuSave className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Save</span>
           </button>
         </div>
@@ -201,7 +201,7 @@ export default function NoteEditor({
 
       {saveError && (
         <div className="px-4 py-2 bg-red-500/10 border-b border-red-500/20 text-red-400 text-xs flex items-center space-x-2">
-          <AlertCircle className="w-4 h-4 flex-shrink-0" />
+          <LuCircleAlert className="w-4 h-4 flex-shrink-0" />
           <span>Save Error: {saveError}</span>
         </div>
       )}

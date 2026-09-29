@@ -208,10 +208,10 @@ export default function TopNav({
                   ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
                   : "bg-slate-800/80 hover:bg-slate-800 text-indigo-300 hover:text-white border border-indigo-500/20"
               }`}
-              title="Toggle Curie AI Assistant"
+              title="Ask Curie"
             >
               <LuSparkles className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Ask AI</span>
+              <span className="hidden sm:inline">Ask Curie</span>
             </button>
           )}
 

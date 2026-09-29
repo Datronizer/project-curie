@@ -121,7 +121,7 @@ export default function LlmChatDrawer({
             <LuSparkles className="w-4 h-4 text-indigo-400" />
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-white">Curie AI</h3>
+            <h3 className="text-sm font-semibold text-white">Ask Curie</h3>
             {activeNoteName ? (
               <p className="text-[10px] text-slate-400 truncate max-w-[180px] flex items-center gap-1">
                 <LuBookOpen className="w-3 h-3 text-indigo-400/80" />

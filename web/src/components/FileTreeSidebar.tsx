@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { TreeNode } from "../api/client";
 import {
   LuChevronDown,
@@ -13,6 +13,7 @@ import {
   LuPlus,
   LuRefreshCw,
   LuMusic,
+  LuUpload,
 } from "react-icons/lu";
 
 interface FileTreeSidebarProps {
@@ -22,6 +23,7 @@ interface FileTreeSidebarProps {
   onNewNote: () => void;
   onRefresh: () => void;
   isLoading: boolean;
+  onUploadFiles?: (files: FileList | File[]) => void;
 }
 
 export default function FileTreeSidebar({
@@ -31,9 +33,12 @@ export default function FileTreeSidebar({
   onNewNote,
   onRefresh,
   isLoading,
+  onUploadFiles,
 }: FileTreeSidebarProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set());
+  const [isDraggingOver, setIsDraggingOver] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const toggleDir = (dirPath: string) => {
     setExpandedDirs((prev) => {
@@ -151,7 +156,46 @@ export default function FileTreeSidebar({
   };
 
   return (
-    <aside className="w-64 border-r border-slate-800 bg-slate-900/40 flex flex-col h-full select-none">
+    <aside
+      onDragOver={(e) => {
+        e.preventDefault();
+        setIsDraggingOver(true);
+      }}
+      onDragLeave={() => setIsDraggingOver(false)}
+      onDrop={(e) => {
+        e.preventDefault();
+        setIsDraggingOver(false);
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+          onUploadFiles?.(e.dataTransfer.files);
+        }
+      }}
+      className={`w-64 border-r border-slate-800 bg-slate-900/40 flex flex-col h-full select-none relative transition-colors ${
+        isDraggingOver ? "bg-indigo-950/40 ring-2 ring-indigo-500 ring-inset" : ""
+      }`}
+    >
+      {/* Hidden file picker input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        className="hidden"
+        onChange={(e) => {
+          if (e.target.files && e.target.files.length > 0) {
+            onUploadFiles?.(e.target.files);
+            e.target.value = "";
+          }
+        }}
+      />
+
+      {/* Drag & Drop Visual Overlay */}
+      {isDraggingOver && (
+        <div className="absolute inset-0 bg-indigo-950/80 backdrop-blur-xs flex flex-col items-center justify-center p-4 text-center z-30 pointer-events-none border-2 border-dashed border-indigo-400 m-2 rounded-xl">
+          <LuUpload className="w-8 h-8 text-indigo-300 animate-bounce mb-2" />
+          <span className="text-xs font-semibold text-white">Drop files to upload</span>
+          <span className="text-[10px] text-indigo-300/80 mt-1">Attachments will be saved to vault</span>
+        </div>
+      )}
+
       {/* Search & Actions Bar */}
       <div className="p-3 border-b border-slate-800 space-y-2">
         <div className="flex items-center justify-between">
@@ -159,6 +203,13 @@ export default function FileTreeSidebar({
             Explorer
           </span>
           <div className="flex items-center space-x-1">
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              title="Upload Attachment / File"
+              className="p-1 rounded-md hover:bg-slate-800 text-slate-400 hover:text-emerald-400 transition"
+            >
+              <LuUpload className="w-4 h-4 text-emerald-400" />
+            </button>
             <button
               onClick={onNewNote}
               title="New Note"

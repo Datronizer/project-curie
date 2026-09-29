@@ -5,6 +5,8 @@ import FileTreeSidebar from "../components/FileTreeSidebar";
 import NoteEditor from "../components/NoteEditor";
 import PdfViewer from "../components/PdfViewer";
 import AudioPlayer from "../components/AudioPlayer";
+import ImageViewer from "../components/ImageViewer";
+import BinaryFileViewer from "../components/BinaryFileViewer";
 import NewNoteModal from "../components/NewNoteModal";
 import { LuFileText, LuLoaderCircle, LuBookOpen } from "react-icons/lu";
 
@@ -43,13 +45,30 @@ export default function NotesView() {
     return ["m4a", "mp3", "wav", "aac", "ogg", "amr"].includes(ext || "");
   };
 
+  const isImageFile = (p: string | null) => {
+    if (!p) return false;
+    const ext = p.split(".").pop()?.toLowerCase();
+    return ["png", "jpg", "jpeg", "gif", "svg", "webp"].includes(ext || "");
+  };
+
+  const isTextFile = (p: string | null) => {
+    if (!p) return false;
+    const ext = p.split(".").pop()?.toLowerCase();
+    return ["md", "markdown", "txt"].includes(ext || "");
+  };
+
   // Load selected file
   const handleSelectFile = async (path: string) => {
     if (!activeVault) return;
     setActivePath(path);
 
-    if (path.toLowerCase().endsWith(".pdf") || isAudioFile(path)) {
-      // PDF and Audio handled by dedicated players directly
+    if (
+      path.toLowerCase().endsWith(".pdf") ||
+      isAudioFile(path) ||
+      isImageFile(path) ||
+      !isTextFile(path)
+    ) {
+      // PDF, Audio, Image, and generic binary handled by dedicated viewers directly
       return;
     }
 
@@ -70,6 +89,28 @@ export default function NotesView() {
     if (!activeVault || !activePath) return;
     await api.saveFileContent(activeVault.id, activePath, newContent);
     setFileContent(newContent);
+  };
+
+  // Upload files to active vault
+  const handleUploadFiles = async (files: FileList | File[]) => {
+    if (!activeVault) return;
+    try {
+      setLoadingTree(true);
+      for (const file of Array.from(files)) {
+        await api.uploadBinary(
+          activeVault.id,
+          file.name,
+          file,
+          file.type || "application/octet-stream"
+        );
+      }
+      await loadTree();
+    } catch (err: any) {
+      console.error("Failed to upload file:", err);
+      alert(`Upload failed: ${err.message || String(err)}`);
+    } finally {
+      setLoadingTree(false);
+    }
   };
 
   // Helper to find file in tree matching a wikilink target
@@ -129,6 +170,8 @@ export default function NotesView() {
 
   const isPdf = activePath?.toLowerCase().endsWith(".pdf");
   const isAudio = isAudioFile(activePath);
+  const isImage = isImageFile(activePath);
+  const isText = isTextFile(activePath);
 
   return (
     <div className="flex-1 flex h-full overflow-hidden">
@@ -140,6 +183,7 @@ export default function NotesView() {
         onNewNote={() => setShowNewNoteModal(true)}
         onRefresh={loadTree}
         isLoading={loadingTree}
+        onUploadFiles={handleUploadFiles}
       />
 
       {/* Main Content Workspace */}
@@ -154,6 +198,10 @@ export default function NotesView() {
             <PdfViewer vaultId={activeVault.id} filePath={activePath} />
           ) : isAudio ? (
             <AudioPlayer vaultId={activeVault.id} filePath={activePath} />
+          ) : isImage ? (
+            <ImageViewer vaultId={activeVault.id} filePath={activePath} />
+          ) : !isText ? (
+            <BinaryFileViewer vaultId={activeVault.id} filePath={activePath} />
           ) : (
             <NoteEditor
               key={activePath}

@@ -60,7 +60,6 @@ export function buildApp()
         app.register(fastifyStatic, {
             root: webDistPath,
             prefix: "/",
-            wildcard: false,
         });
     }
 

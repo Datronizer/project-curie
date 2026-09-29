@@ -27,13 +27,19 @@ export default fp(async function errorPlugin(app)
     app.setNotFoundHandler(async (req, reply) =>
     {
         const url = req.raw.url || "";
+        const pathname = url.split("?")[0];
         const isApiRoute =
-            url.startsWith("/sync") ||
-            url.startsWith("/devices") ||
-            url.startsWith("/vaults") ||
-            url.startsWith("/auth");
+            pathname.startsWith("/sync") ||
+            pathname.startsWith("/devices") ||
+            pathname.startsWith("/vaults") ||
+            pathname.startsWith("/auth") ||
+            pathname.startsWith("/health");
 
-        if (!isApiRoute && req.method === "GET" && typeof (reply as any).sendFile === "function")
+        const isStaticAsset =
+            pathname.startsWith("/assets/") ||
+            /\.[a-zA-Z0-9]+$/.test(pathname);
+
+        if (!isApiRoute && !isStaticAsset && req.method === "GET" && typeof (reply as any).sendFile === "function")
         {
             return (reply as any).sendFile("index.html");
         }

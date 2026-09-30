@@ -642,9 +642,7 @@ export default function MarkdownViewer({
                     className="inline text-rose-400 hover:text-rose-300 font-medium underline underline-offset-2 decoration-rose-500/40 hover:decoration-rose-400 transition cursor-pointer bg-transparent border-0 p-0 text-left font-inherit"
                   >
                     <TbFileTypePdf className="w-4 h-4 inline mr-1 -mt-0.5 text-rose-400 align-middle" />
-                    <span className="text-rose-500/70 mr-0.5">[[</span>
                     {children}
-                    <span className="text-rose-500/70 ml-0.5">]]</span>
                   </button>
                 );
               }
@@ -657,13 +655,11 @@ export default function MarkdownViewer({
                     e.stopPropagation();
                     onNavigateWikiLink(target);
                   }}
-                  title={`Go to [[${target}]]`}
+                  title={`Go to ${target}`}
                   className="inline text-indigo-400 hover:text-indigo-300 font-medium underline underline-offset-2 decoration-indigo-500/40 hover:decoration-indigo-400 transition cursor-pointer bg-transparent border-0 p-0 text-left font-inherit"
                 >
                   <LuFileText className="w-3.5 h-3.5 inline mr-1 -mt-0.5 text-indigo-400 align-middle" />
-                  <span className="text-indigo-500/70 mr-0.5">[[</span>
                   {children}
-                  <span className="text-indigo-500/70 ml-0.5">]]</span>
                 </button>
               );
             }

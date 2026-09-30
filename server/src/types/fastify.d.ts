@@ -7,6 +7,9 @@ import { FileRepository } from "../db/repositories/file.repository";
 import { DeviceRepository } from "../db/repositories/device.repository";
 import { SyncStateRepository } from "../db/repositories/syncState.repository";
 import { StorageService } from "../modules/storage/storage.service";
+import { IngestionJobRepository } from "../db/repositories/ingestionJob.repository";
+import { IngestService } from "../modules/ingest/ingest.service";
+import { IngestionQueueWorker } from "../modules/ingest/ingest.worker";
 import { Device, User } from "../db/types";
 
 declare module "fastify" {
@@ -18,6 +21,9 @@ declare module "fastify" {
         deviceRepo: DeviceRepository;
         syncStateRepo: SyncStateRepository;
         storageService: StorageService;
+        ingestionJobRepo: IngestionJobRepository;
+        ingestService: IngestService;
+        ingestWorker: IngestionQueueWorker;
     }
 
     interface FastifyRequest {

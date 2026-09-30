@@ -4,3 +4,4 @@ export * from "./vaultMembers";
 export * from "./devices";
 export * from "./files";
 export * from "./syncStates";
+export * from "./ingestionJobs";

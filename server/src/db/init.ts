@@ -57,7 +57,24 @@ export function initDatabase()
             last_synced_at INTEGER NOT NULL
         );
 
+        CREATE TABLE IF NOT EXISTS ingestion_jobs (
+            id TEXT PRIMARY KEY,
+            vault_id TEXT NOT NULL REFERENCES vaults(id) ON DELETE CASCADE,
+            status TEXT NOT NULL DEFAULT 'queued',
+            progress INTEGER NOT NULL DEFAULT 0,
+            stage TEXT DEFAULT 'queued',
+            source_file_name TEXT NOT NULL,
+            source_file_path TEXT,
+            source_file_hash TEXT,
+            target_note_path TEXT,
+            error TEXT,
+            metadata TEXT,
+            created_at INTEGER NOT NULL,
+            updated_at INTEGER NOT NULL
+        );
+
         CREATE INDEX IF NOT EXISTS idx_files_vault_path ON files(vault_id, path);
         CREATE INDEX IF NOT EXISTS idx_sync_states_device_file ON sync_states(device_id, file_id);
+        CREATE INDEX IF NOT EXISTS idx_ingestion_jobs_vault_status ON ingestion_jobs(vault_id, status);
     `);
 }

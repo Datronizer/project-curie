@@ -11,7 +11,8 @@
     "start": "node dist/server.js",
     "migrate": "node ./scripts/pre-migrate.js && drizzle-kit push",
     "generate:migration": "drizzle-kit generate",
-    "user:create": "npm run build && node ./scripts/create-user.js"
+    "user:create": "npm run build && node ./scripts/create-user.js",
+    "test": "ts-node --transpile-only test/ingest.test.ts"
   },
   "keywords": [],
   "author": "",
@@ -19,13 +20,16 @@
   "description": "",
   "dependencies": {
     "@fastify/static": "^10.1.4",
+    "adm-zip": "^0.6.1",
     "better-sqlite3": "^13.0.3",
     "drizzle-kit": "^0.31.7",
     "drizzle-orm": "^0.44.7",
     "fastify": "^5.6.2",
-    "fastify-decorators": "^3.16.1"
+    "fastify-decorators": "^3.16.1",
+    "tesseract.js": "^7.0.0"
   },
   "devDependencies": {
+    "@types/adm-zip": "^0.5.8",
     "@types/better-sqlite3": "^9.6.0",
     "@types/node": "^24.10.1",
     "dotenv": "^17.2.3",

@@ -18,3 +18,7 @@ openspec/
 
 # Local Obsidian client repository
 /client/
+
+# Tesseract trained data & test storage
+*.traineddata
+test_storage*/

@@ -8,6 +8,7 @@ import { vaultMembers } from "./schema/vaultMembers";
 import { files } from "./schema/files";
 import { devices } from "./schema/devices";
 import { syncStates } from "./schema/syncStates";
+import { ingestionJobs } from "./schema/ingestionJobs";
 
 // Entity types (database rows)
 export type User = InferSelectModel<typeof users>;
@@ -16,6 +17,7 @@ export type VaultMember = InferSelectModel<typeof vaultMembers>;
 export type Device = InferSelectModel<typeof devices>;
 export type File = InferSelectModel<typeof files>;
 export type SyncState = InferSelectModel<typeof syncStates>;
+export type IngestionJob = InferSelectModel<typeof ingestionJobs>;
 
 // Insert DTO types (for create() operations)
 export type CreateUserDto = InferInsertModel<typeof users>;
@@ -24,3 +26,4 @@ export type CreateVaultMemberDto = InferInsertModel<typeof vaultMembers>;
 export type CreateDeviceDto = InferInsertModel<typeof devices>;
 export type CreateFileDto = InferInsertModel<typeof files>;
 export type CreateSyncStateDto = InferInsertModel<typeof syncStates>;
+export type CreateIngestionJobDto = InferInsertModel<typeof ingestionJobs>;

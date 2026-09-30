@@ -161,6 +161,39 @@ export class StorageService
         };
     }
 
+    public ensureDir(vaultId: string, relativeDir: string): string
+    {
+        const fullDir = this.resolvePath(vaultId, relativeDir);
+        if (!fs.existsSync(fullDir))
+        {
+            fs.mkdirSync(fullDir, { recursive: true });
+        }
+        return fullDir;
+    }
+
+    public async saveBuffer(
+        vaultId: string,
+        relativePath: string,
+        buffer: Buffer
+    ): Promise<SaveStreamResult>
+    {
+        const fullTargetPath = this.resolvePath(vaultId, relativePath);
+        const targetDir = path.dirname(fullTargetPath);
+
+        if (!fs.existsSync(targetDir))
+        {
+            fs.mkdirSync(targetDir, { recursive: true });
+        }
+
+        const hash = crypto.createHash("sha256").update(buffer).digest("hex");
+        fs.writeFileSync(fullTargetPath, buffer);
+
+        return {
+            hash,
+            size: buffer.length,
+        };
+    }
+
     public deleteFile(vaultId: string, relativePath: string): boolean
     {
         const fullPath = this.resolvePath(vaultId, relativePath);

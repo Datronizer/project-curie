@@ -4,3 +4,4 @@ export * from "./vaultMember.repository";
 export * from "./device.repository";
 export * from "./file.repository";
 export * from "./syncState.repository";
+export * from "./ingestionJob.repository";

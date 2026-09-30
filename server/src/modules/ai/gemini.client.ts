@@ -100,14 +100,23 @@ export class GeminiClient {
     const cleanModel = model.trim().replace(/^models\//, "");
     const url = `${this.baseUrl}/models/${encodeURIComponent(cleanModel)}:streamGenerateContent?alt=sse&key=${this.apiKey}`;
 
-    const res = await fetch(url, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-      },
-      body: JSON.stringify(payload),
-      signal,
-    });
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify(payload),
+        signal,
+      });
+    } catch (err: any) {
+      if (signal?.aborted) {
+        return;
+      }
+      yield { type: "error", message: err?.message || String(err) };
+      return;
+    }
 
     if (!res.ok) {
       let errorMsg = `Gemini API returned status ${res.status}`;
@@ -136,6 +145,9 @@ export class GeminiClient {
 
     try {
       while (true) {
+        if (signal?.aborted) {
+          return;
+        }
         const { done, value } = await reader.read();
         if (done) break;
 
@@ -192,6 +204,12 @@ export class GeminiClient {
           } catch {}
         }
       }
+    } catch (err: any) {
+      if (signal?.aborted) {
+        return;
+      }
+      yield { type: "error", message: err?.message || String(err) };
+      return;
     } finally {
       reader.releaseLock();
     }

@@ -38,9 +38,13 @@ export default async function aiRoutes(app: FastifyInstance) {
       });
     }
 
+    reply.hijack();
+
     const abortController = new AbortController();
-    req.raw.on("close", () => {
-      abortController.abort();
+    reply.raw.on("close", () => {
+      if (!reply.raw.writableEnded) {
+        abortController.abort();
+      }
     });
 
     // Write SSE headers directly
@@ -64,6 +68,9 @@ export default async function aiRoutes(app: FastifyInstance) {
       });
 
       for await (const event of stream) {
+        if (reply.raw.writableEnded || reply.raw.destroyed) {
+          break;
+        }
         if (event.type === "done") {
           reply.raw.write("data: [DONE]\n\n");
         } else {
@@ -71,11 +78,15 @@ export default async function aiRoutes(app: FastifyInstance) {
         }
       }
     } catch (err: any) {
-      reply.raw.write(
-        `data: ${JSON.stringify({ type: "error", message: err.message || String(err) })}\n\n`
-      );
+      if (!reply.raw.writableEnded && !reply.raw.destroyed) {
+        reply.raw.write(
+          `data: ${JSON.stringify({ type: "error", message: err.message || String(err) })}\n\n`
+        );
+      }
     } finally {
-      reply.raw.end();
+      if (!reply.raw.writableEnded && !reply.raw.destroyed) {
+        reply.raw.end();
+      }
     }
   });
 }

@@ -13,7 +13,11 @@ import {
   LuFileText,
   LuColumns2,
   LuTriangleAlert,
+  LuMail,
+  LuPhone,
+  LuExternalLink,
 } from "react-icons/lu";
+import { TbFileTypePdf } from "react-icons/tb";
 import { useAuth } from "../contexts/AuthContext";
 import { api, TreeNode } from "../api/client";
 
@@ -554,6 +558,35 @@ export default function MarkdownViewer({
               return <span className="text-slate-300">{children}</span>;
             }
 
+            // Mailto links: prepend mail icon
+            if (href.startsWith("mailto:")) {
+              return (
+                <a
+                  href={href}
+                  className="inline text-sky-400 hover:text-sky-300 hover:underline"
+                  {...props}
+                >
+                  <LuMail className="w-3.5 h-3.5 inline mr-1 -mt-0.5 text-sky-400 align-middle" />
+                  {children}
+                </a>
+              );
+            }
+
+            // Tel links: prepend phone icon
+            if (href.startsWith("tel:")) {
+              return (
+                <a
+                  href={href}
+                  className="inline text-emerald-400 hover:text-emerald-300 hover:underline"
+                  {...props}
+                >
+                  <LuPhone className="w-3.5 h-3.5 inline mr-1 -mt-0.5 text-emerald-400 align-middle" />
+                  {children}
+                </a>
+              );
+            }
+
+            // Wikilink embeds and backlinks: [[target]] or ![[target]]
             if (href.startsWith("wikilink_embed:") || href.startsWith("wikilink:")) {
               const prefix = href.startsWith("wikilink_embed:") ? "wikilink_embed:" : "wikilink:";
               let target = href.slice(prefix.length);
@@ -590,6 +623,32 @@ export default function MarkdownViewer({
                   <span className="text-xs text-emerald-400">Image: {target}</span>
                 );
               }
+
+              // Determine if backlink resolves to a PDF or note
+              const resolved = resolveAssetPath(target, tree, currentFilePath);
+              const resolvedExt = resolved.split("?")[0].split("#")[0].split(".").pop()?.toLowerCase();
+              const isPdf = ext === "pdf" || resolvedExt === "pdf";
+
+              if (isPdf) {
+                return (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      onNavigateWikiLink(target);
+                    }}
+                    title={`Open PDF: ${target}`}
+                    className="inline text-rose-400 hover:text-rose-300 font-medium underline underline-offset-2 decoration-rose-500/40 hover:decoration-rose-400 transition cursor-pointer bg-transparent border-0 p-0 text-left font-inherit"
+                  >
+                    <TbFileTypePdf className="w-4 h-4 inline mr-1 -mt-0.5 text-rose-400 align-middle" />
+                    <span className="text-rose-500/70 mr-0.5">[[</span>
+                    {children}
+                    <span className="text-rose-500/70 ml-0.5">]]</span>
+                  </button>
+                );
+              }
+
               return (
                 <button
                   type="button"
@@ -599,8 +658,9 @@ export default function MarkdownViewer({
                     onNavigateWikiLink(target);
                   }}
                   title={`Go to [[${target}]]`}
-                  className="inline-flex items-center text-indigo-400 hover:text-indigo-300 font-medium underline underline-offset-2 decoration-indigo-500/40 hover:decoration-indigo-400 transition cursor-pointer"
+                  className="inline text-indigo-400 hover:text-indigo-300 font-medium underline underline-offset-2 decoration-indigo-500/40 hover:decoration-indigo-400 transition cursor-pointer bg-transparent border-0 p-0 text-left font-inherit"
                 >
+                  <LuFileText className="w-3.5 h-3.5 inline mr-1 -mt-0.5 text-indigo-400 align-middle" />
                   <span className="text-indigo-500/70 mr-0.5">[[</span>
                   {children}
                   <span className="text-indigo-500/70 ml-0.5">]]</span>
@@ -658,6 +718,27 @@ export default function MarkdownViewer({
                 ) : null;
               }
 
+              const resolvedRel = resolveAssetPath(decodedHref, tree, currentFilePath);
+              const resolvedRelExt = resolvedRel.split("?")[0].split("#")[0].split(".").pop()?.toLowerCase();
+              const isPdf = ext === "pdf" || resolvedRelExt === "pdf";
+
+              if (isPdf) {
+                return (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      onNavigateWikiLink(decodedHref);
+                    }}
+                    className="inline text-rose-400 hover:text-rose-300 hover:underline cursor-pointer bg-transparent border-0 p-0 text-left font-inherit"
+                  >
+                    <TbFileTypePdf className="w-4 h-4 inline mr-1 -mt-0.5 text-rose-400 align-middle" />
+                    {children}
+                  </button>
+                );
+              }
+
               return (
                 <button
                   type="button"
@@ -668,20 +749,23 @@ export default function MarkdownViewer({
                   }}
                   className="inline text-indigo-400 hover:text-indigo-300 hover:underline cursor-pointer bg-transparent border-0 p-0 text-left font-inherit"
                 >
+                  <LuFileText className="w-3.5 h-3.5 inline mr-1 -mt-0.5 text-indigo-400 align-middle" />
                   {children}
                 </button>
               );
             }
 
+            // External web link: show external site icon at the end of the text
             return (
               <a
                 href={href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-indigo-400 hover:underline"
+                className="inline text-indigo-400 hover:text-indigo-300 hover:underline"
                 {...props}
               >
                 {children}
+                <LuExternalLink className="w-3.5 h-3.5 inline ml-1 -mt-0.5 text-indigo-400 opacity-80 align-middle" />
               </a>
             );
           },

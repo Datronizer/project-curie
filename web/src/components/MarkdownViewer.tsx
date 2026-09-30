@@ -28,7 +28,11 @@ export type DualViewMode = "handwriting" | "transcription" | "split";
 
 function resolveAssetPath(filePath: string, tree?: TreeNode[], currentFilePath?: string): string {
   if (!filePath) return "";
-  const cleanPath = filePath.trim().replace(/^\.?\/+/, "");
+  let cleanPath = filePath.trim();
+  try {
+    cleanPath = decodeURIComponent(cleanPath);
+  } catch {}
+  cleanPath = cleanPath.replace(/^\.?\/+/, "");
 
   if (!tree || tree.length === 0) {
     return cleanPath;
@@ -64,7 +68,8 @@ function resolveAssetPath(filePath: string, tree?: TreeNode[], currentFilePath?:
   const attachMatch = allFiles.find(
     (f) =>
       f.path.toLowerCase() === `attachments/${cleanLower}` ||
-      f.path.toLowerCase().endsWith(`/attachments/${cleanLower}`)
+      f.path.toLowerCase().endsWith(`/attachments/${cleanLower}`) ||
+      f.path.toLowerCase().endsWith(`/${cleanLower}`)
   );
   if (attachMatch) return attachMatch.path;
 
@@ -225,7 +230,9 @@ function InlineImageViewer({
         setSrc(url);
       } catch (err: any) {
         if (!active) return;
-        setError(err.message || "Failed to load image");
+        // As a fallback, try authenticated downloadUrl
+        const downloadUrl = api.getDownloadUrl(vaultId, resolvedPath);
+        setSrc(downloadUrl);
       } finally {
         if (active) setLoading(false);
       }
@@ -263,6 +270,10 @@ function InlineImageViewer({
         src={src}
         alt={alt || filePath}
         className="rounded-xl border border-slate-800 max-h-[650px] w-full object-contain bg-white/5 p-2 shadow-md"
+        onError={() => {
+          setError(`Failed to render image ${filePath}`);
+          setSrc(null);
+        }}
       />
     </div>
   );
@@ -395,22 +406,42 @@ export default function MarkdownViewer({
   }, [content]);
 
   // Pre-process Obsidian embeds and wikilinks:
+  // ![[Image.png]] -> ![Image.png](Image.png)
+  // [[Image.png]] -> ![Image.png](Image.png)
   // ![[Recording.m4a]] -> [Recording.m4a](wikilink_embed:Recording.m4a)
   // [[Note Name]] -> [Note Name](wikilink:Note%20Name)
   const processedContent = useMemo(() => {
     if (!content) return "";
 
+    const isImageFile = (target: string) => {
+      const ext = target.split(".").pop()?.toLowerCase();
+      return ["png", "jpg", "jpeg", "gif", "svg", "webp", "ico", "bmp", "avif", "tiff"].includes(
+        ext || ""
+      );
+    };
+
+    // 1. Process Obsidian Embeds: ![[target|alias]]
+    // If target is an image, convert directly to Markdown image ![alias](target)
+    // so ReactMarkdown directly calls components.img
     const embedRegex = /!\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g;
     let text = content.replace(embedRegex, (_, target, alias) => {
       const cleanTarget = target.trim();
       const label = alias ? alias.trim() : cleanTarget;
+      if (isImageFile(cleanTarget)) {
+        return `![${label}](${encodeURIComponent(cleanTarget)})`;
+      }
       return `[${label}](wikilink_embed:${encodeURIComponent(cleanTarget)})`;
     });
 
+    // 2. Process Obsidian Wikilinks / Backlinks: [[target|alias]]
+    // If target is an image, also convert directly to Markdown image ![alias](target)
     const wikiLinkRegex = /\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g;
     text = text.replace(wikiLinkRegex, (_, target, alias) => {
       const cleanTarget = target.trim();
       const label = alias ? alias.trim() : cleanTarget;
+      if (isImageFile(cleanTarget)) {
+        return `![${label}](${encodeURIComponent(cleanTarget)})`;
+      }
       return `[${label}](wikilink:${encodeURIComponent(cleanTarget)})`;
     });
 
@@ -482,6 +513,7 @@ export default function MarkdownViewer({
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         rehypePlugins={[rehypeRaw]}
+        urlTransform={(url) => url}
         components={{
           img: ({ src, alt, ...props }: any) => {
             if (!src) return null;
@@ -497,10 +529,20 @@ export default function MarkdownViewer({
               );
             }
             // Vault image
+            let cleanSrc = src;
+            if (cleanSrc.startsWith("wikilink_embed:")) {
+              cleanSrc = cleanSrc.slice(15);
+            } else if (cleanSrc.startsWith("wikilink:")) {
+              cleanSrc = cleanSrc.slice(9);
+            }
+            try {
+              cleanSrc = decodeURIComponent(cleanSrc);
+            } catch {}
+
             return activeVault ? (
               <InlineImageViewer
                 vaultId={activeVault.id}
-                filePath={decodeURIComponent(src)}
+                filePath={cleanSrc}
                 currentFilePath={currentFilePath}
                 tree={tree}
                 alt={alt}
@@ -508,9 +550,17 @@ export default function MarkdownViewer({
             ) : null;
           },
           a: ({ href, children, ...props }: any) => {
-            if (href?.startsWith("wikilink_embed:")) {
-              const target = decodeURIComponent(href.slice(15));
-              const ext = target.split(".").pop()?.toLowerCase();
+            if (!href || href === "" || href === "#" || href === "/") {
+              return <span className="text-slate-300">{children}</span>;
+            }
+
+            if (href.startsWith("wikilink_embed:") || href.startsWith("wikilink:")) {
+              const prefix = href.startsWith("wikilink_embed:") ? "wikilink_embed:" : "wikilink:";
+              let target = href.slice(prefix.length);
+              try {
+                target = decodeURIComponent(target);
+              } catch {}
+              const ext = target.split("?")[0].split("#")[0].split(".").pop()?.toLowerCase();
               if (["m4a", "mp3", "wav", "aac", "ogg", "amr"].includes(ext || "")) {
                 return activeVault ? (
                   <InlineAudioPlayer
@@ -534,32 +584,18 @@ export default function MarkdownViewer({
                     filePath={target}
                     currentFilePath={currentFilePath}
                     tree={tree}
-                    alt={target}
+                    alt={typeof children === "string" ? children : target}
                   />
                 ) : (
                   <span className="text-xs text-emerald-400">Image: {target}</span>
                 );
-              }
-            }
-
-            if (href?.startsWith("wikilink:")) {
-              const target = decodeURIComponent(href.slice(9));
-              const ext = target.split(".").pop()?.toLowerCase();
-              if (["m4a", "mp3", "wav", "aac", "ogg", "amr"].includes(ext || "")) {
-                return activeVault ? (
-                  <InlineAudioPlayer
-                    vaultId={activeVault.id}
-                    filePath={target}
-                    currentFilePath={currentFilePath}
-                    tree={tree}
-                  />
-                ) : null;
               }
               return (
                 <button
                   type="button"
                   onClick={(e) => {
                     e.preventDefault();
+                    e.stopPropagation();
                     onNavigateWikiLink(target);
                   }}
                   title={`Go to [[${target}]]`}
@@ -573,47 +609,67 @@ export default function MarkdownViewer({
             }
 
             // Same-page heading anchor links: #heading
-            if (href?.startsWith("#")) {
+            if (href.startsWith("#")) {
               const anchor = href.slice(1);
               return (
-                <a
-                  href={href}
+                <button
+                  type="button"
                   onClick={(e) => {
                     e.preventDefault();
+                    e.stopPropagation();
                     const el =
                       document.getElementById(anchor) ||
                       document.getElementById(anchor.toLowerCase().replace(/\s+/g, "-")) ||
                       document.querySelector(`[data-heading="${anchor}"]`);
                     el?.scrollIntoView({ behavior: "smooth" });
                   }}
-                  className="text-indigo-400 hover:underline cursor-pointer"
-                  {...props}
+                  className="inline text-indigo-400 hover:text-indigo-300 hover:underline cursor-pointer bg-transparent border-0 p-0 text-left font-inherit"
                 >
                   {children}
-                </a>
+                </button>
               );
             }
 
             // Internal relative link to other notes or vault documents
             if (
-              href &&
               !href.startsWith("http://") &&
               !href.startsWith("https://") &&
               !href.startsWith("mailto:") &&
               !href.startsWith("tel:")
             ) {
+              let decodedHref = href;
+              try {
+                decodedHref = decodeURIComponent(href);
+              } catch {}
+              const ext = decodedHref.split("?")[0].split("#")[0].split(".").pop()?.toLowerCase();
+              if (
+                ["png", "jpg", "jpeg", "gif", "svg", "webp", "ico", "bmp", "avif", "tiff"].includes(
+                  ext || ""
+                )
+              ) {
+                return activeVault ? (
+                  <InlineImageViewer
+                    vaultId={activeVault.id}
+                    filePath={decodedHref}
+                    currentFilePath={currentFilePath}
+                    tree={tree}
+                    alt={typeof children === "string" ? children : decodedHref}
+                  />
+                ) : null;
+              }
+
               return (
-                <a
-                  href={href}
+                <button
+                  type="button"
                   onClick={(e) => {
                     e.preventDefault();
-                    onNavigateWikiLink(decodeURIComponent(href));
+                    e.stopPropagation();
+                    onNavigateWikiLink(decodedHref);
                   }}
-                  className="text-indigo-400 hover:underline cursor-pointer"
-                  {...props}
+                  className="inline text-indigo-400 hover:text-indigo-300 hover:underline cursor-pointer bg-transparent border-0 p-0 text-left font-inherit"
                 >
                   {children}
-                </a>
+                </button>
               );
             }
 

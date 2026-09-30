@@ -10,11 +10,22 @@ import { checkSharedFiles, SharedFile } from "./services/shareReceiver";
 import { LuLoaderCircle } from "react-icons/lu";
 
 function MainLayout() {
-  const { isAuthenticated, isLoading, refreshVaults } = useAuth();
+  const { isAuthenticated, isLoading, refreshVaults, activeVault } = useAuth();
   const [currentView, setCurrentView] = useState<"notes" | "admin">("notes");
   const [sharedFiles, setSharedFiles] = useState<SharedFile[]>([]);
   const [showShareModal, setShowShareModal] = useState(false);
   const [showAiChat, setShowAiChat] = useState(false);
+  const [activeNoteContext, setActiveNoteContext] = useState<{
+    activePath: string | null;
+    fileContent: string;
+    tree: any[];
+    appendContent?: (text: string) => Promise<void>;
+    createNote?: (path: string, content?: string) => Promise<void>;
+  }>({
+    activePath: null,
+    fileContent: "",
+    tree: [],
+  });
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -63,7 +74,11 @@ function MainLayout() {
       />
 
       <main className="flex-1 flex overflow-hidden">
-        {currentView === "notes" ? <NotesView /> : <AdminView />}
+        {currentView === "notes" ? (
+          <NotesView onActiveContextChange={setActiveNoteContext} />
+        ) : (
+          <AdminView />
+        )}
       </main>
 
       <ShareImportModal
@@ -78,6 +93,12 @@ function MainLayout() {
       <LlmChatDrawer
         isOpen={showAiChat}
         onClose={() => setShowAiChat(false)}
+        vaultId={activeVault?.id}
+        activeNotePath={activeNoteContext.activePath}
+        activeNoteContent={activeNoteContext.fileContent}
+        tree={activeNoteContext.tree}
+        onAppendToNote={activeNoteContext.appendContent}
+        onCreateNote={activeNoteContext.createNote}
       />
     </div>
   );

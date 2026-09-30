@@ -10,7 +10,17 @@ import BinaryFileViewer from "../components/BinaryFileViewer";
 import NewNoteModal from "../components/NewNoteModal";
 import { LuFileText, LuLoaderCircle, LuBookOpen } from "react-icons/lu";
 
-export default function NotesView() {
+interface NotesViewProps {
+  onActiveContextChange?: (context: {
+    activePath: string | null;
+    fileContent: string;
+    tree: TreeNode[];
+    appendContent: (text: string) => Promise<void>;
+    createNote: (path: string, content?: string) => Promise<void>;
+  }) => void;
+}
+
+export default function NotesView({ onActiveContextChange }: NotesViewProps = {}) {
   const { activeVault } = useAuth();
   const [tree, setTree] = useState<TreeNode[]>([]);
   const [activePath, setActivePath] = useState<string | null>(null);
@@ -38,6 +48,37 @@ export default function NotesView() {
     setActivePath(null);
     setFileContent("");
   }, [activeVault, loadTree]);
+
+  const handleAppendContent = useCallback(
+    async (textToAppend: string) => {
+      if (!activeVault || !activePath) return;
+      const updated = fileContent.trim() ? `${fileContent}\n\n${textToAppend}` : textToAppend;
+      await api.saveFileContent(activeVault.id, activePath, updated);
+      setFileContent(updated);
+    },
+    [activeVault, activePath, fileContent]
+  );
+
+  const handleCreateNoteFromAi = useCallback(
+    async (path: string, initialContent?: string) => {
+      if (!activeVault) return;
+      const cleanPath = path.endsWith(".md") ? path : `${path}.md`;
+      await api.saveFileContent(activeVault.id, cleanPath, initialContent || "");
+      await loadTree();
+      await handleSelectFile(cleanPath);
+    },
+    [activeVault, loadTree]
+  );
+
+  useEffect(() => {
+    onActiveContextChange?.({
+      activePath,
+      fileContent,
+      tree,
+      appendContent: handleAppendContent,
+      createNote: handleCreateNoteFromAi,
+    });
+  }, [activePath, fileContent, tree, handleAppendContent, handleCreateNoteFromAi, onActiveContextChange]);
 
   const isAudioFile = (p: string | null) => {
     if (!p) return false;

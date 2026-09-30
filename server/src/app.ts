@@ -14,6 +14,7 @@ import fileRoutes from "./modules/file/file.routes";
 import syncRoutes from "./modules/sync/sync.routes";
 import vaultRoutes from "./modules/vault/vault.routes";
 import ingestRoutes from "./modules/ingest/ingest.routes";
+import aiRoutes from "./modules/ai/ai.routes";
 
 export function buildApp()
 {
@@ -52,6 +53,8 @@ export function buildApp()
     app.register(vaultRoutes, { prefix: "/vaults" });
     app.register(fileRoutes, { prefix: "/vaults/:vaultId" });
     app.register(ingestRoutes, { prefix: "/vaults/:vaultId/ingest" });
+    app.register(aiRoutes, { prefix: "/vaults/:vaultId/ai" });
+    app.register(aiRoutes, { prefix: "/ai" });
     app.register(deviceRoutes, { prefix: "/devices" });
     app.register(syncRoutes, { prefix: "/sync" });
 

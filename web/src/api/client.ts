@@ -302,7 +302,185 @@ class ApiClient {
     });
   }
 
-  // Local LLM
+  // AI Gateway & LLM
+  public getAiProvider(): "gemini" | "ollama" {
+    return (localStorage.getItem("curie_ai_provider") as any) || "gemini";
+  }
+
+  public setAiProvider(provider: "gemini" | "ollama") {
+    localStorage.setItem("curie_ai_provider", provider);
+  }
+
+  public getAiModel(): string {
+    return localStorage.getItem("curie_ai_model") || "gemini-3.8-flash";
+  }
+
+  public setAiModel(model: string) {
+    localStorage.setItem("curie_ai_model", model.trim() || "gemini-3.8-flash");
+  }
+
+  public getAiThinkingEffort(): "off" | "low" | "medium" | "high" {
+    return (localStorage.getItem("curie_ai_thinking") as any) || "medium";
+  }
+
+  public setAiThinkingEffort(effort: "off" | "low" | "medium" | "high") {
+    localStorage.setItem("curie_ai_thinking", effort);
+  }
+
+  public async getAiModels(): Promise<Array<{
+    id: string;
+    name: string;
+    description: string;
+    supportsThinking: boolean;
+    defaultThinkingEffort?: "off" | "low" | "medium" | "high";
+    isFlagship?: boolean;
+  }>> {
+    try {
+      const res = await this.request<{ success: boolean; models: any[] }>("/ai/models");
+      if (res?.models?.length) return res.models;
+    } catch {
+      // Fallback if offline
+    }
+    return [
+      {
+        id: "gemini-3.8-flash",
+        name: "Gemini 3.8 Flash",
+        description: "Next-gen flagship: Ultra-low latency, multimodal, native deep thinking.",
+        supportsThinking: true,
+        defaultThinkingEffort: "medium",
+        isFlagship: true,
+      },
+      {
+        id: "gemini-3.8-pro",
+        name: "Gemini 3.8 Pro",
+        description: "Deep analytical reasoning for advanced mathematics, coding, and multi-step derivations.",
+        supportsThinking: true,
+        defaultThinkingEffort: "high",
+        isFlagship: true,
+      },
+      {
+        id: "gemini-2.5-flash",
+        name: "Gemini 2.5 Flash",
+        description: "Fast multimodal model optimized for notes, lecture summaries, and high throughput.",
+        supportsThinking: true,
+        defaultThinkingEffort: "low",
+      },
+      {
+        id: "gemini-2.0-flash",
+        name: "Gemini 2.0 Flash",
+        description: "Lightweight, reliable streaming with broad multimodal capabilities.",
+        supportsThinking: true,
+        defaultThinkingEffort: "low",
+      },
+      {
+        id: "gemini-1.5-pro",
+        name: "Gemini 1.5 Pro",
+        description: "Massive 2M token context window for full textbooks, PDFs, and multi-semester vaults.",
+        supportsThinking: false,
+        defaultThinkingEffort: "off",
+      },
+    ];
+  }
+
+  public async streamAiChat(options: {
+    vaultId?: string;
+    prompt: string;
+    model?: string;
+    thinkingEffort?: "off" | "low" | "medium" | "high";
+    activeNotePath?: string;
+    attachmentPaths?: string[];
+    history?: Array<{ role: "user" | "assistant" | "system"; content: string }>;
+    onToken: (token: string) => void;
+    onThought?: (thought: string) => void;
+    onError?: (error: string) => void;
+    signal?: AbortSignal;
+  }): Promise<void> {
+    const url = options.vaultId
+      ? this.resolveUrl(`/vaults/${options.vaultId}/ai/chat`)
+      : this.resolveUrl("/ai/chat");
+
+    const headers: Record<string, string> = {
+      "content-type": "application/json",
+    };
+    if (this.token) {
+      headers["authorization"] = `Bearer ${this.token}`;
+    }
+
+    const payload = {
+      vaultId: options.vaultId,
+      prompt: options.prompt,
+      model: options.model || this.getAiModel(),
+      thinkingEffort: options.thinkingEffort || this.getAiThinkingEffort(),
+      activeNotePath: options.activeNotePath,
+      attachmentPaths: options.attachmentPaths,
+      history: options.history,
+    };
+
+    const res = await fetch(url, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(payload),
+      signal: options.signal,
+    });
+
+    if (!res.ok) {
+      let errMsg = `Server returned status ${res.status}`;
+      try {
+        const data = await res.json();
+        if (data?.error?.message) {
+          errMsg = data.error.message;
+        }
+      } catch {
+        const text = await res.text().catch(() => "");
+        if (text) errMsg = text;
+      }
+      throw new Error(errMsg);
+    }
+
+    if (!res.body) {
+      throw new Error("No response stream received from Curie AI server");
+    }
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder("utf-8");
+    let buffer = "";
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed || !trimmed.startsWith("data:")) continue;
+
+          const dataStr = trimmed.slice(5).trim();
+          if (dataStr === "[DONE]") return;
+
+          try {
+            const parsed = JSON.parse(dataStr);
+            if (parsed.type === "token" && parsed.text) {
+              options.onToken(parsed.text);
+            } else if (parsed.type === "thought" && parsed.text) {
+              options.onThought?.(parsed.text);
+            } else if (parsed.type === "error" && parsed.message) {
+              options.onError?.(parsed.message);
+            }
+          } catch {
+            // Partial chunk
+          }
+        }
+      }
+    } finally {
+      reader.releaseLock();
+    }
+  }
+
+  // Legacy local LLM backwards compatibility
   public getLlmEndpoint(): string {
     return localStorage.getItem("curie_llm_endpoint") || "";
   }
@@ -317,70 +495,27 @@ class ApiClient {
   }
 
   public getLlmModel(): string {
-    return localStorage.getItem("curie_llm_model") || "llama3";
+    return this.getAiModel();
   }
 
   public setLlmModel(model: string) {
-    localStorage.setItem("curie_llm_model", model.trim() || "llama3");
+    this.setAiModel(model);
   }
 
   public async queryLlm(
     prompt: string,
-    context?: string,
+    _context?: string,
     history: Array<{ role: "user" | "assistant" | "system"; content: string }> = []
   ): Promise<string> {
-    let endpoint = this.getLlmEndpoint();
-    if (!endpoint) {
-      endpoint = this.baseUrl ? `${this.baseUrl}/ai/chat` : "http://localhost:11434/api/chat";
-    }
-
-    const model = this.getLlmModel();
-    const systemPrompt = context
-      ? `You are Curie AI, a helpful study assistant. Use the following note context to answer user questions:\n\n---\n${context}\n---`
-      : "You are Curie AI, a helpful study assistant for notes and lectures.";
-
-    const messages = [
-      { role: "system", content: systemPrompt },
-      ...history,
-      { role: "user", content: prompt },
-    ];
-
-    const isOllama = endpoint.includes("11434") || endpoint.endsWith("/api/chat");
-    const body = isOllama
-      ? { model, messages, stream: false }
-      : { model, messages };
-
-    const headers: Record<string, string> = {
-      "content-type": "application/json",
-    };
-    if (this.token && endpoint.startsWith(this.baseUrl)) {
-      headers["authorization"] = `Bearer ${this.token}`;
-    }
-
-    const res = await fetch(endpoint, {
-      method: "POST",
-      headers,
-      body: JSON.stringify(body),
+    let fullResponse = "";
+    await this.streamAiChat({
+      prompt: _context ? `Context:\n${_context}\n\nQuestion: ${prompt}` : prompt,
+      history,
+      onToken: (tok) => {
+        fullResponse += tok;
+      },
     });
-
-    if (!res.ok) {
-      const err = await res.text().catch(() => "");
-      throw new Error(`LLM Error (HTTP ${res.status}): ${err || res.statusText}`);
-    }
-
-    const data = await res.json();
-    if (data?.message?.content) {
-      // Ollama format
-      return data.message.content;
-    }
-    if (data?.choices?.[0]?.message?.content) {
-      // OpenAI format
-      return data.choices[0].message.content;
-    }
-    if (data?.response) {
-      return data.response;
-    }
-    return JSON.stringify(data);
+    return fullResponse;
   }
 }
 

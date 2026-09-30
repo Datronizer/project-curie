@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import MarkdownViewer from "./MarkdownViewer";
+import { TreeNode } from "../api/client";
 import {
   LuEye,
   LuPen,
@@ -16,6 +17,7 @@ interface NoteEditorProps {
   initialContent: string;
   onSave: (content: string) => Promise<void>;
   onNavigateWikiLink: (target: string) => void;
+  tree?: TreeNode[];
 }
 
 export default function NoteEditor({
@@ -23,6 +25,7 @@ export default function NoteEditor({
   initialContent,
   onSave,
   onNavigateWikiLink,
+  tree,
 }: NoteEditorProps) {
   const [content, setContent] = useState(initialContent);
   const [savedContent, setSavedContent] = useState(initialContent);
@@ -233,6 +236,8 @@ export default function NoteEditor({
             <MarkdownViewer
               content={content}
               onNavigateWikiLink={onNavigateWikiLink}
+              currentFilePath={filePath}
+              tree={tree}
             />
           </div>
         )}

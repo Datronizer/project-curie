@@ -175,7 +175,8 @@ class ApiClient {
 
   // Content
   public getDownloadUrl(vaultId: string, path: string): string {
-    return this.resolveUrl(`/vaults/${vaultId}/content?path=${encodeURIComponent(path)}`);
+    const tokenParam = this.token ? `&token=${encodeURIComponent(this.token)}` : "";
+    return this.resolveUrl(`/vaults/${vaultId}/content?path=${encodeURIComponent(path)}${tokenParam}`);
   }
 
   public async getFileContent(

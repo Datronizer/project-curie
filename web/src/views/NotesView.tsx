@@ -48,7 +48,7 @@ export default function NotesView() {
   const isImageFile = (p: string | null) => {
     if (!p) return false;
     const ext = p.split(".").pop()?.toLowerCase();
-    return ["png", "jpg", "jpeg", "gif", "svg", "webp"].includes(ext || "");
+    return ["png", "jpg", "jpeg", "gif", "svg", "webp", "ico", "bmp", "avif", "tiff"].includes(ext || "");
   };
 
   const isTextFile = (p: string | null) => {
@@ -113,36 +113,108 @@ export default function NotesView() {
     }
   };
 
-  // Helper to find file in tree matching a wikilink target
-  const resolveWikiLink = (target: string, nodes: TreeNode[]): string | null => {
-    const cleanTarget = target.trim().toLowerCase();
-    const targetWithMd = cleanTarget.endsWith(".md") ? cleanTarget : `${cleanTarget}.md`;
+  // Comprehensive helper to find file in tree matching a wikilink or backlink target
+  const resolveWikiLink = (
+    rawTarget: string,
+    nodes: TreeNode[],
+    currentFilePath?: string | null
+  ): { path: string; anchor?: string } | null => {
+    const hashIndex = rawTarget.indexOf("#");
+    let targetPath = hashIndex >= 0 ? rawTarget.slice(0, hashIndex).trim() : rawTarget.trim();
+    const anchor = hashIndex >= 0 ? rawTarget.slice(hashIndex + 1).trim() : undefined;
 
-    for (const node of nodes) {
-      if (node.type === "file") {
-        const nodeName = node.name.toLowerCase();
-        const nodePath = node.path.toLowerCase();
-        if (nodeName === targetWithMd || nodeName === cleanTarget || nodePath === targetWithMd || nodePath === cleanTarget) {
-          return node.path;
-        }
-      } else if (node.type === "dir" && node.children) {
-        const found = resolveWikiLink(target, node.children);
-        if (found) return found;
-      }
+    // Intra-document anchor link: [[#Section]]
+    if (!targetPath && anchor) {
+      return { path: currentFilePath || "", anchor };
     }
+
+    if (!targetPath) return null;
+
+    targetPath = targetPath.replace(/^\.?\/+/, "");
+    const cleanTarget = targetPath.toLowerCase();
+    const hasExtension = /\.[a-zA-Z0-9]+$/.test(cleanTarget);
+    const targetWithMd = hasExtension ? cleanTarget : `${cleanTarget}.md`;
+    const targetBaseName = (targetPath.split("/").pop() || targetPath).toLowerCase();
+    const targetBaseNameWithMd = hasExtension ? targetBaseName : `${targetBaseName}.md`;
+
+    // Flatten all files in tree
+    const allFiles: { path: string; name: string }[] = [];
+    const collectFiles = (list: TreeNode[]) => {
+      for (const node of list) {
+        if (node.type === "file") {
+          allFiles.push({ path: node.path, name: node.name });
+        } else if (node.type === "dir" && node.children) {
+          collectFiles(node.children);
+        }
+      }
+    };
+    collectFiles(nodes);
+
+    // 1. Exact path match
+    let match = allFiles.find(
+      (f) =>
+        f.path.toLowerCase() === cleanTarget ||
+        f.path.toLowerCase() === targetWithMd
+    );
+    if (match) return { path: match.path, anchor };
+
+    // 2. Relative to current note's directory
+    if (currentFilePath && currentFilePath.includes("/")) {
+      const currentDir = currentFilePath.substring(0, currentFilePath.lastIndexOf("/")).toLowerCase();
+      const relativeTarget = `${currentDir}/${cleanTarget}`;
+      const relativeTargetWithMd = `${currentDir}/${targetWithMd}`;
+      match = allFiles.find(
+        (f) =>
+          f.path.toLowerCase() === relativeTarget ||
+          f.path.toLowerCase() === relativeTargetWithMd
+      );
+      if (match) return { path: match.path, anchor };
+    }
+
+    // 3. Basename match
+    match = allFiles.find(
+      (f) =>
+        f.name.toLowerCase() === targetBaseName ||
+        f.name.toLowerCase() === targetBaseNameWithMd
+    );
+    if (match) return { path: match.path, anchor };
+
+    // 4. Basename without extension match
+    const targetBaseWithoutExt = targetBaseName.replace(/\.[a-zA-Z0-9]+$/, "");
+    match = allFiles.find(
+      (f) => f.name.toLowerCase().replace(/\.[a-zA-Z0-9]+$/, "") === targetBaseWithoutExt
+    );
+    if (match) return { path: match.path, anchor };
+
     return null;
   };
 
   // Wikilink navigation handler
-  const handleNavigateWikiLink = (target: string) => {
-    const resolved = resolveWikiLink(target, tree);
+  const handleNavigateWikiLink = async (target: string) => {
+    const resolved = resolveWikiLink(target, tree, activePath);
     if (resolved) {
-      handleSelectFile(resolved);
+      if (resolved.path && resolved.path !== activePath) {
+        await handleSelectFile(resolved.path);
+      }
+      if (resolved.anchor) {
+        setTimeout(() => {
+          const el =
+            document.getElementById(resolved.anchor!) ||
+            document.querySelector(`[data-heading="${resolved.anchor!}"]`) ||
+            document.getElementById(resolved.anchor!.toLowerCase().replace(/\s+/g, "-"));
+          if (el) {
+            el.scrollIntoView({ behavior: "smooth" });
+          }
+        }, 150);
+      }
     } else {
       // Note doesn't exist yet, ask to create it
-      if (confirm(`Note "[[${target}]]" was not found in vault. Create it now?`)) {
-        const path = target.endsWith(".md") ? target : `${target}.md`;
-        handleCreateNote(path);
+      const [noteName] = target.split("#");
+      const cleanName = noteName.trim();
+      if (!cleanName) return;
+      if (confirm(`Note "[[${cleanName}]]" was not found in vault. Create it now?`)) {
+        const path = cleanName.endsWith(".md") ? cleanName : `${cleanName}.md`;
+        await handleCreateNote(path);
       }
     }
   };
@@ -209,6 +281,7 @@ export default function NotesView() {
               initialContent={fileContent}
               onSave={handleSaveNote}
               onNavigateWikiLink={handleNavigateWikiLink}
+              tree={tree}
             />
           )
         ) : (

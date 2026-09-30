@@ -21,6 +21,7 @@ export default function ImageViewer({ vaultId, filePath }: ImageViewerProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [dimensions, setDimensions] = useState<{ width: number; height: number } | null>(null);
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -35,7 +36,31 @@ export default function ImageViewer({ vaultId, filePath }: ImageViewerProps) {
     setLoading(true);
     setError(null);
     setDimensions(null);
-  }, [vaultId, filePath]);
+
+    let active = true;
+    let urlToRevoke: string | null = null;
+
+    async function fetchImage() {
+      try {
+        const blob = await api.getBlob(vaultId, filePath);
+        if (!active) return;
+        const url = URL.createObjectURL(blob);
+        urlToRevoke = url;
+        setBlobUrl(url);
+      } catch (err: any) {
+        if (!active) return;
+        // Fall back to downloadUrl directly
+        setBlobUrl(downloadUrl);
+      }
+    }
+
+    fetchImage();
+
+    return () => {
+      active = false;
+      if (urlToRevoke) URL.revokeObjectURL(urlToRevoke);
+    };
+  }, [vaultId, filePath, downloadUrl]);
 
   const handleZoomIn = () => {
     setScale((prev) => Math.min(prev * 1.25, 5));
@@ -176,7 +201,7 @@ export default function ImageViewer({ vaultId, filePath }: ImageViewerProps) {
           </div>
         ) : (
           <img
-            src={downloadUrl}
+            src={blobUrl || downloadUrl}
             alt={fileName}
             onLoad={handleImageLoad}
             onError={handleImageError}

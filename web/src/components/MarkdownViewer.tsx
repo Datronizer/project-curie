@@ -12,29 +12,106 @@ import {
   LuPenTool,
   LuFileText,
   LuColumns2,
+  LuTriangleAlert,
 } from "react-icons/lu";
 import { useAuth } from "../contexts/AuthContext";
-import { api } from "../api/client";
+import { api, TreeNode } from "../api/client";
 
 interface MarkdownViewerProps {
   content: string;
   onNavigateWikiLink: (target: string) => void;
+  currentFilePath?: string;
+  tree?: TreeNode[];
 }
 
 export type DualViewMode = "handwriting" | "transcription" | "split";
 
-function InlineAudioPlayer({ vaultId, filePath }: { vaultId: string; filePath: string }) {
+function resolveAssetPath(filePath: string, tree?: TreeNode[], currentFilePath?: string): string {
+  if (!filePath) return "";
+  const cleanPath = filePath.trim().replace(/^\.?\/+/, "");
+
+  if (!tree || tree.length === 0) {
+    return cleanPath;
+  }
+
+  const allFiles: { path: string; name: string }[] = [];
+  const collect = (nodes: TreeNode[]) => {
+    for (const node of nodes) {
+      if (node.type === "file") {
+        allFiles.push({ path: node.path, name: node.name });
+      } else if (node.type === "dir" && node.children) {
+        collect(node.children);
+      }
+    }
+  };
+  collect(tree);
+
+  const cleanLower = cleanPath.toLowerCase();
+
+  // 1. Direct path match
+  const direct = allFiles.find((f) => f.path.toLowerCase() === cleanLower);
+  if (direct) return direct.path;
+
+  // 2. Relative to current file folder
+  if (currentFilePath && currentFilePath.includes("/")) {
+    const currentDir = currentFilePath.substring(0, currentFilePath.lastIndexOf("/"));
+    const rel = `${currentDir}/${cleanPath}`.toLowerCase();
+    const relMatch = allFiles.find((f) => f.path.toLowerCase() === rel);
+    if (relMatch) return relMatch.path;
+  }
+
+  // 3. Attachments folder match
+  const attachMatch = allFiles.find(
+    (f) =>
+      f.path.toLowerCase() === `attachments/${cleanLower}` ||
+      f.path.toLowerCase().endsWith(`/attachments/${cleanLower}`)
+  );
+  if (attachMatch) return attachMatch.path;
+
+  // 4. Basename match
+  const baseName = (cleanPath.split("/").pop() || cleanPath).toLowerCase();
+  const baseMatch = allFiles.find((f) => f.name.toLowerCase() === baseName);
+  if (baseMatch) return baseMatch.path;
+
+  return cleanPath;
+}
+
+function InlineAudioPlayer({
+  vaultId,
+  filePath,
+  tree,
+  currentFilePath,
+}: {
+  vaultId: string;
+  filePath: string;
+  tree?: TreeNode[];
+  currentFilePath?: string;
+}) {
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [loading, setLoading] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const fileName = filePath.split("/").pop() || filePath;
+
+  const resolvedPath = useMemo(() => {
+    return resolveAssetPath(filePath, tree, currentFilePath);
+  }, [filePath, tree, currentFilePath]);
+
+  const fileName = resolvedPath.split("/").pop() || resolvedPath;
 
   const handlePlayToggle = async () => {
     if (!blobUrl) {
       try {
         setLoading(true);
-        const blob = await api.getBlob(vaultId, filePath);
+        let blob: Blob | null = null;
+        try {
+          blob = await api.getBlob(vaultId, resolvedPath);
+        } catch (firstErr) {
+          if (!resolvedPath.startsWith("attachments/")) {
+            blob = await api.getBlob(vaultId, `attachments/${resolvedPath}`);
+          } else {
+            throw firstErr;
+          }
+        }
         const url = URL.createObjectURL(blob);
         setBlobUrl(url);
         setTimeout(() => {
@@ -92,38 +169,99 @@ function InlineAudioPlayer({ vaultId, filePath }: { vaultId: string; filePath: s
   );
 }
 
-function InlineImageViewer({ vaultId, filePath }: { vaultId: string; filePath: string }) {
+function InlineImageViewer({
+  vaultId,
+  filePath,
+  currentFilePath,
+  tree,
+  alt,
+}: {
+  vaultId: string;
+  filePath: string;
+  currentFilePath?: string;
+  tree?: TreeNode[];
+  alt?: string;
+}) {
   const [src, setSrc] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const resolvedPath = useMemo(() => {
+    return resolveAssetPath(filePath, tree, currentFilePath);
+  }, [filePath, tree, currentFilePath]);
+
   const isHandwriting =
-    filePath.toLowerCase().includes("handwriting") ||
-    filePath.toLowerCase().endsWith(".svg") ||
-    filePath.toLowerCase().includes(".page");
+    resolvedPath.toLowerCase().includes("handwriting") ||
+    resolvedPath.toLowerCase().endsWith(".svg") ||
+    resolvedPath.toLowerCase().includes(".page");
 
   useEffect(() => {
     let active = true;
     let urlToRevoke: string | null = null;
-    api.getBlob(vaultId, filePath).then((blob) => {
-      if (!active) return;
-      const url = URL.createObjectURL(blob);
-      urlToRevoke = url;
-      setSrc(url);
-    }).catch(console.error);
+
+    async function loadImage() {
+      try {
+        setLoading(true);
+        setError(null);
+
+        let blob: Blob | null = null;
+        try {
+          blob = await api.getBlob(vaultId, resolvedPath);
+        } catch (firstErr) {
+          if (!resolvedPath.startsWith("attachments/")) {
+            try {
+              blob = await api.getBlob(vaultId, `attachments/${resolvedPath}`);
+            } catch {
+              throw firstErr;
+            }
+          } else {
+            throw firstErr;
+          }
+        }
+
+        if (!active) return;
+        const url = URL.createObjectURL(blob);
+        urlToRevoke = url;
+        setSrc(url);
+      } catch (err: any) {
+        if (!active) return;
+        setError(err.message || "Failed to load image");
+      } finally {
+        if (active) setLoading(false);
+      }
+    }
+
+    loadImage();
 
     return () => {
       active = false;
       if (urlToRevoke) URL.revokeObjectURL(urlToRevoke);
     };
-  }, [vaultId, filePath]);
+  }, [vaultId, resolvedPath]);
 
-  if (!src) {
-    return <span className="text-xs text-slate-500 italic">Loading attachment...</span>;
+  if (loading) {
+    return (
+      <span className="inline-flex items-center space-x-1.5 text-xs text-slate-500 my-2">
+        <LuLoaderCircle className="w-3.5 h-3.5 animate-spin text-indigo-400" />
+        <span>Loading image ({filePath})...</span>
+      </span>
+    );
+  }
+
+  if (error || !src) {
+    return (
+      <span className="inline-flex items-center space-x-1.5 text-xs text-rose-400/90 my-2 px-2.5 py-1 rounded bg-rose-500/10 border border-rose-500/20">
+        <LuTriangleAlert className="w-3.5 h-3.5 flex-shrink-0" />
+        <span>Image not found: {filePath}</span>
+      </span>
+    );
   }
 
   return (
     <div className={`not-prose my-3 ${isHandwriting ? "curie-handwriting-embed" : ""}`}>
       <img
         src={src}
-        alt={filePath}
+        alt={alt || filePath}
         className="rounded-xl border border-slate-800 max-h-[650px] w-full object-contain bg-white/5 p-2 shadow-md"
       />
     </div>
@@ -227,9 +365,20 @@ function CodeBlock({ children, className }: { children: any; className?: string 
   );
 }
 
+function getHeadingId(children: any): string {
+  const text = typeof children === "string"
+    ? children
+    : Array.isArray(children)
+      ? children.map((c) => (typeof c === "string" ? c : "")).join("")
+      : "";
+  return text.toLowerCase().replace(/[^\w\s-]/g, "").trim().replace(/\s+/g, "-");
+}
+
 export default function MarkdownViewer({
   content,
   onNavigateWikiLink,
+  currentFilePath,
+  tree,
 }: MarkdownViewerProps) {
   const { activeVault } = useAuth();
   const [viewMode, setViewMode] = useState<DualViewMode>("split");
@@ -334,20 +483,59 @@ export default function MarkdownViewer({
         remarkPlugins={[remarkGfm]}
         rehypePlugins={[rehypeRaw]}
         components={{
-          a: ({ href, children, ...props }) => {
+          img: ({ src, alt, ...props }: any) => {
+            if (!src) return null;
+            // Web / external URLs
+            if (src.startsWith("http://") || src.startsWith("https://") || src.startsWith("data:")) {
+              return (
+                <img
+                  src={src}
+                  alt={alt || ""}
+                  className="rounded-xl border border-slate-800 max-h-[650px] w-full object-contain bg-white/5 p-2 shadow-md my-3"
+                  {...props}
+                />
+              );
+            }
+            // Vault image
+            return activeVault ? (
+              <InlineImageViewer
+                vaultId={activeVault.id}
+                filePath={decodeURIComponent(src)}
+                currentFilePath={currentFilePath}
+                tree={tree}
+                alt={alt}
+              />
+            ) : null;
+          },
+          a: ({ href, children, ...props }: any) => {
             if (href?.startsWith("wikilink_embed:")) {
               const target = decodeURIComponent(href.slice(15));
               const ext = target.split(".").pop()?.toLowerCase();
               if (["m4a", "mp3", "wav", "aac", "ogg", "amr"].includes(ext || "")) {
                 return activeVault ? (
-                  <InlineAudioPlayer vaultId={activeVault.id} filePath={target} />
+                  <InlineAudioPlayer
+                    vaultId={activeVault.id}
+                    filePath={target}
+                    currentFilePath={currentFilePath}
+                    tree={tree}
+                  />
                 ) : (
                   <span className="text-xs text-purple-400">Audio: {target}</span>
                 );
               }
-              if (["png", "jpg", "jpeg", "gif", "svg", "webp"].includes(ext || "")) {
+              if (
+                ["png", "jpg", "jpeg", "gif", "svg", "webp", "ico", "bmp", "avif", "tiff"].includes(
+                  ext || ""
+                )
+              ) {
                 return activeVault ? (
-                  <InlineImageViewer vaultId={activeVault.id} filePath={target} />
+                  <InlineImageViewer
+                    vaultId={activeVault.id}
+                    filePath={target}
+                    currentFilePath={currentFilePath}
+                    tree={tree}
+                    alt={target}
+                  />
                 ) : (
                   <span className="text-xs text-emerald-400">Image: {target}</span>
                 );
@@ -359,7 +547,12 @@ export default function MarkdownViewer({
               const ext = target.split(".").pop()?.toLowerCase();
               if (["m4a", "mp3", "wav", "aac", "ogg", "amr"].includes(ext || "")) {
                 return activeVault ? (
-                  <InlineAudioPlayer vaultId={activeVault.id} filePath={target} />
+                  <InlineAudioPlayer
+                    vaultId={activeVault.id}
+                    filePath={target}
+                    currentFilePath={currentFilePath}
+                    tree={tree}
+                  />
                 ) : null;
               }
               return (
@@ -378,6 +571,52 @@ export default function MarkdownViewer({
                 </button>
               );
             }
+
+            // Same-page heading anchor links: #heading
+            if (href?.startsWith("#")) {
+              const anchor = href.slice(1);
+              return (
+                <a
+                  href={href}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    const el =
+                      document.getElementById(anchor) ||
+                      document.getElementById(anchor.toLowerCase().replace(/\s+/g, "-")) ||
+                      document.querySelector(`[data-heading="${anchor}"]`);
+                    el?.scrollIntoView({ behavior: "smooth" });
+                  }}
+                  className="text-indigo-400 hover:underline cursor-pointer"
+                  {...props}
+                >
+                  {children}
+                </a>
+              );
+            }
+
+            // Internal relative link to other notes or vault documents
+            if (
+              href &&
+              !href.startsWith("http://") &&
+              !href.startsWith("https://") &&
+              !href.startsWith("mailto:") &&
+              !href.startsWith("tel:")
+            ) {
+              return (
+                <a
+                  href={href}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    onNavigateWikiLink(decodeURIComponent(href));
+                  }}
+                  className="text-indigo-400 hover:underline cursor-pointer"
+                  {...props}
+                >
+                  {children}
+                </a>
+              );
+            }
+
             return (
               <a
                 href={href}
@@ -404,21 +643,45 @@ export default function MarkdownViewer({
             }
             return <CodeBlock className={className}>{children}</CodeBlock>;
           },
-          h1: ({ children }) => (
-            <h1 className="text-2xl font-bold text-white tracking-tight mt-6 mb-4 pb-2 border-b border-slate-800">
-              {children}
-            </h1>
-          ),
-          h2: ({ children }) => (
-            <h2 className="text-xl font-semibold text-white tracking-tight mt-5 mb-3">
-              {children}
-            </h2>
-          ),
-          h3: ({ children }) => (
-            <h3 className="text-lg font-semibold text-slate-100 mt-4 mb-2">
-              {children}
-            </h3>
-          ),
+          h1: ({ children, ...props }: any) => {
+            const id = getHeadingId(children);
+            return (
+              <h1
+                id={id || undefined}
+                data-heading={id || undefined}
+                className="text-2xl font-bold text-white tracking-tight mt-6 mb-4 pb-2 border-b border-slate-800"
+                {...props}
+              >
+                {children}
+              </h1>
+            );
+          },
+          h2: ({ children, ...props }: any) => {
+            const id = getHeadingId(children);
+            return (
+              <h2
+                id={id || undefined}
+                data-heading={id || undefined}
+                className="text-xl font-semibold text-white tracking-tight mt-5 mb-3"
+                {...props}
+              >
+                {children}
+              </h2>
+            );
+          },
+          h3: ({ children, ...props }: any) => {
+            const id = getHeadingId(children);
+            return (
+              <h3
+                id={id || undefined}
+                data-heading={id || undefined}
+                className="text-lg font-semibold text-slate-100 mt-4 mb-2"
+                {...props}
+              >
+                {children}
+              </h3>
+            );
+          },
           p: ({ children }) => <p className="mb-4 text-slate-300">{children}</p>,
           ul: ({ children }) => <ul className="list-disc pl-5 mb-4 space-y-1">{children}</ul>,
           ol: ({ children }) => <ol className="list-decimal pl-5 mb-4 space-y-1">{children}</ol>,

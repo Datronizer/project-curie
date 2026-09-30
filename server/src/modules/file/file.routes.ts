@@ -1,13 +1,41 @@
 import { FastifyInstance } from "fastify";
 import { FileService } from "./file.service";
 
+function resolveMimeType(filePath: string): string
+{
+    const ext = filePath.split(".").pop()?.toLowerCase();
+    switch (ext)
+    {
+        case "png": return "image/png";
+        case "jpg":
+        case "jpeg": return "image/jpeg";
+        case "gif": return "image/gif";
+        case "webp": return "image/webp";
+        case "svg": return "image/svg+xml";
+        case "bmp": return "image/bmp";
+        case "ico": return "image/x-icon";
+        case "pdf": return "application/pdf";
+        case "md":
+        case "markdown": return "text/markdown; charset=utf-8";
+        case "txt": return "text/plain; charset=utf-8";
+        case "json": return "application/json";
+        case "m4a": return "audio/mp4";
+        case "mp3": return "audio/mpeg";
+        case "wav": return "audio/wav";
+        case "aac": return "audio/aac";
+        case "ogg": return "audio/ogg";
+        case "sdocx": return "application/octet-stream";
+        default: return "application/octet-stream";
+    }
+}
+
 export default async function fileRoutes(app: FastifyInstance)
 {
     const fileService = new FileService(app.fileRepo, app.storageService);
 
-    // Support streaming binary/raw body
+    // Support streaming binary/raw body for any non-JSON content type (images, audio, video, pdf, etc.)
     app.addContentTypeParser(
-        ["application/octet-stream", "text/markdown", "text/plain", "application/pdf"],
+        /^(?!application\/json).*$/,
         function (request, payload, done)
         {
             done(null, payload);
@@ -77,7 +105,7 @@ export default async function fileRoutes(app: FastifyInstance)
 
             reply.header("x-curie-hash", hash);
             reply.header("Content-Length", size);
-            reply.header("Content-Type", "application/octet-stream");
+            reply.header("Content-Type", resolveMimeType(relativePath));
             return reply.send(stream);
         }
         catch (err: any)

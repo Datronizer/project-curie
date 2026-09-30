@@ -34,25 +34,23 @@ export default fp(async function authPlugin(app)
         }
 
         const authHeader = req.headers.authorization;
-        if (!authHeader || !authHeader.startsWith("Bearer "))
+        let rawToken: string | undefined;
+
+        if (authHeader && authHeader.startsWith("Bearer "))
         {
-            return reply.status(401).send({
-                success: false,
-                error: {
-                    message: "Missing or malformed Authorization header. Expected Bearer <token>",
-                    code: "UNAUTHORIZED",
-                    status: 401,
-                },
-            });
+            rawToken = authHeader.slice(7).trim();
+        }
+        else if ((req.query as any)?.token)
+        {
+            rawToken = String((req.query as any).token).trim();
         }
 
-        const rawToken = authHeader.slice(7).trim();
         if (!rawToken)
         {
             return reply.status(401).send({
                 success: false,
                 error: {
-                    message: "Bearer token is empty",
+                    message: "Missing or malformed Authorization header or token query parameter. Expected Bearer <token>",
                     code: "UNAUTHORIZED",
                     status: 401,
                 },

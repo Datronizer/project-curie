@@ -96,7 +96,7 @@ export default function FileTreeSidebar({
     if (ext === "sdocx") {
       return <LuFileText className="w-4 h-4 text-amber-400 flex-shrink-0" />;
     }
-    if (["png", "jpg", "jpeg", "gif", "svg", "webp"].includes(ext || "")) {
+    if (["png", "jpg", "jpeg", "gif", "svg", "webp", "ico", "bmp", "avif", "tiff"].includes(ext || "")) {
       return <LuImageIcon className="w-4 h-4 text-emerald-400 flex-shrink-0" />;
     }
     return <LuFile className="w-4 h-4 text-slate-400 flex-shrink-0" />;

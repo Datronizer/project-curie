@@ -9,6 +9,7 @@ import { DeviceRepository } from "../db/repositories/device.repository";
 import { SyncStateRepository } from "../db/repositories/syncState.repository";
 import { StorageService } from "../modules/storage/storage.service";
 import { IngestionJobRepository } from "../db/repositories/ingestionJob.repository";
+import { AiConversationRepository } from "../db/repositories/aiConversation.repository";
 import { IngestService } from "../modules/ingest/ingest.service";
 import { IngestionQueueWorker } from "../modules/ingest/ingest.worker";
 
@@ -23,6 +24,7 @@ export default fp(async function (app)
     const syncStateRepo = new SyncStateRepository();
     const storageService = new StorageService();
     const ingestionJobRepo = new IngestionJobRepository();
+    const aiConversationRepo = new AiConversationRepository();
 
     const ingestService = new IngestService(ingestionJobRepo, fileRepo, storageService);
     const ingestWorker = new IngestionQueueWorker(ingestService);
@@ -36,6 +38,7 @@ export default fp(async function (app)
     app.decorate("syncStateRepo", syncStateRepo);
     app.decorate("storageService", storageService);
     app.decorate("ingestionJobRepo", ingestionJobRepo);
+    app.decorate("aiConversationRepo", aiConversationRepo);
     app.decorate("ingestService", ingestService);
     app.decorate("ingestWorker", ingestWorker);
 

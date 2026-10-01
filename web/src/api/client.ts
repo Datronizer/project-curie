@@ -36,6 +36,26 @@ export interface LoginResponse {
   vaults: Vault[];
 }
 
+export interface AiConversation {
+  id: string;
+  vaultId: string;
+  userId?: string | null;
+  title: string;
+  model: string;
+  createdAt: string | number | Date;
+  updatedAt: string | number | Date;
+}
+
+export interface AiMessage {
+  id: string;
+  conversationId: string;
+  role: "user" | "assistant" | "system";
+  content: string;
+  thought?: string | null;
+  metadata?: string | null;
+  createdAt: string | number | Date;
+}
+
 class ApiClient {
   private token: string | null = null;
   private baseUrl: string = "";
@@ -382,14 +402,73 @@ class ApiClient {
     ];
   }
 
+  // AI Conversations
+  public async listAiConversations(vaultId: string): Promise<AiConversation[]> {
+    const res = await this.request<{ success: boolean; conversations: AiConversation[] }>(
+      `/vaults/${vaultId}/ai/conversations`
+    );
+    return res.conversations || [];
+  }
+
+  public async getAiConversation(
+    vaultId: string,
+    conversationId: string
+  ): Promise<{ conversation: AiConversation; messages: AiMessage[] }> {
+    return this.request<{ conversation: AiConversation; messages: AiMessage[] }>(
+      `/vaults/${vaultId}/ai/conversations/${conversationId}`
+    );
+  }
+
+  public async createAiConversation(
+    vaultId: string,
+    data?: { title?: string; model?: string }
+  ): Promise<AiConversation> {
+    const res = await this.request<{ success: boolean; conversation: AiConversation }>(
+      `/vaults/${vaultId}/ai/conversations`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(data || {}),
+      }
+    );
+    return res.conversation;
+  }
+
+  public async updateAiConversationTitle(
+    vaultId: string,
+    conversationId: string,
+    title: string
+  ): Promise<AiConversation> {
+    const res = await this.request<{ success: boolean; conversation: AiConversation }>(
+      `/vaults/${vaultId}/ai/conversations/${conversationId}`,
+      {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ title }),
+      }
+    );
+    return res.conversation;
+  }
+
+  public async deleteAiConversation(vaultId: string, conversationId: string): Promise<void> {
+    await this.request<{ success: boolean }>(
+      `/vaults/${vaultId}/ai/conversations/${conversationId}`,
+      {
+        method: "DELETE",
+      }
+    );
+  }
+
   public async streamAiChat(options: {
     vaultId?: string;
+    conversationId?: string;
     prompt: string;
     model?: string;
     thinkingEffort?: "off" | "low" | "medium" | "high";
     activeNotePath?: string;
     attachmentPaths?: string[];
     history?: Array<{ role: "user" | "assistant" | "system"; content: string }>;
+    onConversationId?: (id: string) => void;
     onToken: (token: string) => void;
     onThought?: (thought: string) => void;
     onError?: (error: string) => void;
@@ -408,6 +487,7 @@ class ApiClient {
 
     const payload = {
       vaultId: options.vaultId,
+      conversationId: options.conversationId,
       prompt: options.prompt,
       model: options.model || this.getAiModel(),
       thinkingEffort: options.thinkingEffort || this.getAiThinkingEffort(),
@@ -463,7 +543,9 @@ class ApiClient {
 
           try {
             const parsed = JSON.parse(dataStr);
-            if (parsed.type === "token" && parsed.text) {
+            if (parsed.type === "conversation" && parsed.conversationId) {
+              options.onConversationId?.(parsed.conversationId);
+            } else if (parsed.type === "token" && parsed.text) {
               options.onToken(parsed.text);
             } else if (parsed.type === "thought" && parsed.text) {
               options.onThought?.(parsed.text);

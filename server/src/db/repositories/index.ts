@@ -5,3 +5,4 @@ export * from "./device.repository";
 export * from "./file.repository";
 export * from "./syncState.repository";
 export * from "./ingestionJob.repository";
+export * from "./aiConversation.repository";

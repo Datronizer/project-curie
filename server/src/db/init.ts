@@ -73,8 +73,30 @@ export function initDatabase()
             updated_at INTEGER NOT NULL
         );
 
+        CREATE TABLE IF NOT EXISTS ai_conversations (
+            id TEXT PRIMARY KEY,
+            vault_id TEXT NOT NULL REFERENCES vaults(id) ON DELETE CASCADE,
+            user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
+            title TEXT NOT NULL,
+            model TEXT NOT NULL,
+            created_at INTEGER NOT NULL,
+            updated_at INTEGER NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS ai_messages (
+            id TEXT PRIMARY KEY,
+            conversation_id TEXT NOT NULL REFERENCES ai_conversations(id) ON DELETE CASCADE,
+            role TEXT NOT NULL,
+            content TEXT NOT NULL,
+            thought TEXT,
+            metadata TEXT,
+            created_at INTEGER NOT NULL
+        );
+
         CREATE INDEX IF NOT EXISTS idx_files_vault_path ON files(vault_id, path);
         CREATE INDEX IF NOT EXISTS idx_sync_states_device_file ON sync_states(device_id, file_id);
         CREATE INDEX IF NOT EXISTS idx_ingestion_jobs_vault_status ON ingestion_jobs(vault_id, status);
+        CREATE INDEX IF NOT EXISTS idx_ai_conversations_vault ON ai_conversations(vault_id, updated_at DESC);
+        CREATE INDEX IF NOT EXISTS idx_ai_messages_conversation ON ai_messages(conversation_id, created_at ASC);
     `);
 }

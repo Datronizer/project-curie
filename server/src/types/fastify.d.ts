@@ -8,6 +8,7 @@ import { DeviceRepository } from "../db/repositories/device.repository";
 import { SyncStateRepository } from "../db/repositories/syncState.repository";
 import { StorageService } from "../modules/storage/storage.service";
 import { IngestionJobRepository } from "../db/repositories/ingestionJob.repository";
+import { AiConversationRepository } from "../db/repositories/aiConversation.repository";
 import { IngestService } from "../modules/ingest/ingest.service";
 import { IngestionQueueWorker } from "../modules/ingest/ingest.worker";
 import { Device, User } from "../db/types";
@@ -22,6 +23,7 @@ declare module "fastify" {
         syncStateRepo: SyncStateRepository;
         storageService: StorageService;
         ingestionJobRepo: IngestionJobRepository;
+        aiConversationRepo: AiConversationRepository;
         ingestService: IngestService;
         ingestWorker: IngestionQueueWorker;
     }

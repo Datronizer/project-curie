@@ -5,7 +5,7 @@ import NotesView from "./views/NotesView";
 import AdminView from "./views/AdminView";
 import TopNav from "./components/TopNav";
 import ShareImportModal from "./components/ShareImportModal";
-import LlmChatDrawer from "./components/LlmChatDrawer";
+import AiChatPanel from "./components/AiChatPanel";
 import { checkSharedFiles, SharedFile } from "./services/shareReceiver";
 import { LuLoaderCircle } from "react-icons/lu";
 
@@ -73,11 +73,26 @@ function MainLayout() {
         isAiChatOpen={showAiChat}
       />
 
-      <main className="flex-1 flex overflow-hidden">
-        {currentView === "notes" ? (
-          <NotesView onActiveContextChange={setActiveNoteContext} />
-        ) : (
-          <AdminView />
+      <main className="flex-1 flex overflow-hidden relative">
+        <div className="flex-1 flex overflow-hidden min-w-0">
+          {currentView === "notes" ? (
+            <NotesView onActiveContextChange={setActiveNoteContext} />
+          ) : (
+            <AdminView />
+          )}
+        </div>
+
+        {showAiChat && (
+          <AiChatPanel
+            isOpen={showAiChat}
+            onClose={() => setShowAiChat(false)}
+            vaultId={activeVault?.id}
+            activeNotePath={activeNoteContext.activePath}
+            activeNoteContent={activeNoteContext.fileContent}
+            tree={activeNoteContext.tree}
+            onAppendToNote={activeNoteContext.appendContent}
+            onCreateNote={activeNoteContext.createNote}
+          />
         )}
       </main>
 
@@ -88,17 +103,6 @@ function MainLayout() {
         onImportComplete={() => {
           refreshVaults();
         }}
-      />
-
-      <LlmChatDrawer
-        isOpen={showAiChat}
-        onClose={() => setShowAiChat(false)}
-        vaultId={activeVault?.id}
-        activeNotePath={activeNoteContext.activePath}
-        activeNoteContent={activeNoteContext.fileContent}
-        tree={activeNoteContext.tree}
-        onAppendToNote={activeNoteContext.appendContent}
-        onCreateNote={activeNoteContext.createNote}
       />
     </div>
   );

@@ -5,3 +5,5 @@ export * from "./devices";
 export * from "./files";
 export * from "./syncStates";
 export * from "./ingestionJobs";
+export * from "./aiConversations";
+export * from "./aiMessages";

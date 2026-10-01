@@ -1,4 +1,4 @@
-import { Readable } from "node:stream";
+import { GoogleGenAI } from "@google/genai";
 
 export interface GeminiPart {
   text?: string;
@@ -88,9 +88,11 @@ export const SUPPORTED_MODELS: ModelMetadata[] = [
 ];
 
 export class GeminiClient {
-  private baseUrl: string = "https://generativelanguage.googleapis.com/v1beta";
+  private ai: GoogleGenAI;
 
-  constructor(private apiKey: string) {}
+  constructor(apiKey: string) {
+    this.ai = new GoogleGenAI({ apiKey });
+  }
 
   public async *streamChat(
     model: string,
@@ -98,122 +100,74 @@ export class GeminiClient {
     signal?: AbortSignal
   ): AsyncGenerator<StreamEvent> {
     const cleanModel = model.trim().replace(/^models\//, "");
-    const url = `${this.baseUrl}/models/${encodeURIComponent(cleanModel)}:streamGenerateContent?alt=sse&key=${this.apiKey}`;
 
-    let res: Response;
     try {
-      res = await fetch(url, {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-        },
-        body: JSON.stringify(payload),
-        signal,
+      if (signal?.aborted) return;
+
+      const contents = payload.contents.map((c) => ({
+        role: c.role || "user",
+        parts: c.parts.map((p) => {
+          if (p.inlineData) {
+            return {
+              inlineData: {
+                mimeType: p.inlineData.mimeType,
+                data: p.inlineData.data,
+              },
+            };
+          }
+          return { text: p.text || "" };
+        }),
+      }));
+
+      const config: any = {};
+      if (signal) {
+        config.abortSignal = signal;
+      }
+
+      if (payload.systemInstruction?.parts?.length) {
+        config.systemInstruction = {
+          parts: payload.systemInstruction.parts.map((p) => ({
+            text: p.text || "",
+          })),
+        };
+      }
+
+      if (payload.generationConfig?.thinkingConfig?.thinkingBudget !== undefined) {
+        const budget = payload.generationConfig.thinkingConfig.thinkingBudget;
+        if (budget > 0) {
+          config.thinkingConfig = {
+            includeThoughts: true,
+            thinkingBudget: budget,
+          };
+        }
+      }
+
+      const streamResponse = await this.ai.models.generateContentStream({
+        model: cleanModel,
+        contents,
+        config,
       });
-    } catch (err: any) {
-      if (signal?.aborted) {
-        return;
-      }
-      yield { type: "error", message: err?.message || String(err) };
-      return;
-    }
 
-    if (!res.ok) {
-      let errorMsg = `Gemini API returned status ${res.status}`;
-      try {
-        const errorJson = await res.json();
-        if (errorJson?.error?.message) {
-          errorMsg = errorJson.error.message;
-        }
-      } catch {
-        const text = await res.text().catch(() => "");
-        if (text) errorMsg = text;
-      }
-      yield { type: "error", message: errorMsg };
-      return;
-    }
+      for await (const chunk of streamResponse) {
+        if (signal?.aborted) return;
 
-    if (!res.body) {
-      yield { type: "error", message: "No response stream received from Gemini API" };
-      return;
-    }
-
-    // Process SSE stream
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder("utf-8");
-    let buffer = "";
-
-    try {
-      while (true) {
-        if (signal?.aborted) {
-          return;
-        }
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() || "";
-
-        for (const line of lines) {
-          const trimmed = line.trim();
-          if (!trimmed || !trimmed.startsWith("data:")) continue;
-
-          const dataPayload = trimmed.slice(5).trim();
-          if (dataPayload === "[DONE]") {
-            yield { type: "done" };
-            return;
-          }
-
-          try {
-            const parsed = JSON.parse(dataPayload);
-            const candidates = parsed?.candidates || [];
-            for (const candidate of candidates) {
-              const parts: GeminiPart[] = candidate?.content?.parts || [];
-              for (const part of parts) {
-                if (part.thought) {
-                  yield { type: "thought", text: part.text || "" };
-                } else if (part.text) {
-                  yield { type: "token", text: part.text };
-                }
-              }
+        const candidates = chunk.candidates || [];
+        for (const candidate of candidates) {
+          const parts = candidate.content?.parts || [];
+          for (const part of parts) {
+            if ((part as any).thought) {
+              yield { type: "thought", text: (part as any).text || "" };
+            } else if ((part as any).text) {
+              yield { type: "token", text: (part as any).text };
             }
-          } catch (err) {
-            // Ignore malformed intermediate JSON chunks
           }
         }
       }
 
-      // Flush remaining buffer
-      if (buffer.trim().startsWith("data:")) {
-        const dataPayload = buffer.trim().slice(5).trim();
-        if (dataPayload !== "[DONE]") {
-          try {
-            const parsed = JSON.parse(dataPayload);
-            const candidates = parsed?.candidates || [];
-            for (const candidate of candidates) {
-              const parts: GeminiPart[] = candidate?.content?.parts || [];
-              for (const part of parts) {
-                if (part.thought) {
-                  yield { type: "thought", text: part.text || "" };
-                } else if (part.text) {
-                  yield { type: "token", text: part.text };
-                }
-              }
-            }
-          } catch {}
-        }
-      }
+      yield { type: "done" };
     } catch (err: any) {
-      if (signal?.aborted) {
-        return;
-      }
+      if (signal?.aborted) return;
       yield { type: "error", message: err?.message || String(err) };
-      return;
-    } finally {
-      reader.releaseLock();
     }
-
-    yield { type: "done" };
   }
 }

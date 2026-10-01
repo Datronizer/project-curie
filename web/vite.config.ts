@@ -15,4 +15,41 @@ export default defineConfig({
       "/health": "http://localhost:3000",
     },
   },
+  build: {
+    chunkSizeWarningLimit: 600,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes("node_modules")) {
+            if (id.includes("react-icons")) {
+              return "icons";
+            }
+            if (id.includes("katex")) {
+              return "katex";
+            }
+            if (
+              id.includes("react-markdown") ||
+              id.includes("remark-") ||
+              id.includes("rehype-") ||
+              id.includes("micromark") ||
+              id.includes("mdast") ||
+              id.includes("unist") ||
+              id.includes("hast") ||
+              id.includes("vfile") ||
+              id.includes("property-information") ||
+              id.includes("html-void-elements")
+            ) {
+              return "markdown-engine";
+            }
+            if (id.includes("@capacitor")) {
+              return "capacitor";
+            }
+            if (id.includes("react") || id.includes("react-dom") || id.includes("scheduler")) {
+              return "react-core";
+            }
+          }
+        },
+      },
+    },
+  },
 });

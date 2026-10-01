@@ -1,0 +1,326 @@
+/**
+ * Curie Design System & Theme Stylesheet
+ * Defines root color tokens, typography scales, spacing units,
+ * inline code styling, KaTeX/LaTeX display, and chat prose spacing.
+ */
+
+:root {
+  /* ==========================================================================
+     Color Palette Tokens
+     ========================================================================== */
+  --curie-bg-primary: #020617;        /* slate-950 */
+  --curie-bg-secondary: #0f172a;      /* slate-900 */
+  --curie-bg-elevated: #1e293b;       /* slate-800 */
+  --curie-bg-surface: #0f172a;        /* card surface */
+  --curie-bg-input: #020617;          /* inputs */
+
+  /* Text & Typography */
+  --curie-text-primary: #f8fafc;      /* slate-50 */
+  --curie-text-secondary: #cbd5e1;    /* slate-300 */
+  --curie-text-muted: #94a3b8;        /* slate-400 */
+  --curie-text-subtle: #64748b;       /* slate-500 */
+
+  /* Brand Accents */
+  --curie-accent-primary: #6366f1;    /* indigo-500 */
+  --curie-accent-hover: #4f46e5;      /* indigo-600 */
+  --curie-accent-active: #4338ca;     /* indigo-700 */
+  --curie-accent-glow: rgba(99, 102, 241, 0.25);
+  --curie-accent-subtle: rgba(99, 102, 241, 0.12);
+
+  /* Status Colors */
+  --curie-success: #10b981;           /* emerald-500 */
+  --curie-warning: #f59e0b;           /* amber-500 */
+  --curie-error: #ef4444;             /* red-500 */
+  --curie-rose: #f43f5e;              /* rose-500 */
+
+  /* Borders */
+  --curie-border-subtle: #1e293b;     /* slate-800 */
+  --curie-border-default: #334155;    /* slate-700 */
+  --curie-border-focus: #6366f1;
+
+  /* ==========================================================================
+     In-Line Code Block Color Coding
+     Pink-red typography on a softened dark gray background
+     ========================================================================== */
+  --curie-code-inline-text: #fb7185;   /* rose-400 (vibrant pink-red) */
+  --curie-code-inline-bg: rgba(30, 41, 59, 0.85); /* slate-800 with opacity */
+  --curie-code-inline-border: rgba(71, 85, 105, 0.55);
+
+  /* Code Blocks (pre > code) */
+  --curie-code-block-bg: #090d16;
+  --curie-code-block-border: rgba(51, 65, 85, 0.7);
+
+  /* ==========================================================================
+     LaTeX & KaTeX Tokens
+     ========================================================================== */
+  --curie-math-text: #f1f5f9;
+  --curie-math-bg: rgba(15, 23, 42, 0.75);
+  --curie-math-border: rgba(99, 102, 241, 0.25);
+
+  /* ==========================================================================
+     Spacing & Layout Tokens
+     ========================================================================== */
+  --curie-space-p-bottom: 0.875rem;    /* 14px */
+  --curie-space-h-top: 1.25rem;        /* 20px */
+  --curie-space-h-bottom: 0.5rem;      /* 8px */
+  --curie-space-list-bottom: 0.75rem;  /* 12px */
+  --curie-space-li-gap: 0.375rem;      /* 6px */
+}
+
+/* ==========================================================================
+   In-Line Code Blocks
+   Applies to both Markdown notes and LLM Chat transcripts
+   ========================================================================== */
+:not(pre) > code,
+.curie-prose :not(pre) > code,
+.prose :not(pre) > code {
+  color: var(--curie-code-inline-text) !important;
+  background-color: var(--curie-code-inline-bg) !important;
+  border: 1px solid var(--curie-code-inline-border) !important;
+  border-radius: 0.375rem;
+  padding: 0.15rem 0.425rem;
+  margin: 0 0.2rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 0.875em;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  display: inline-block;
+  vertical-align: baseline;
+}
+
+/* Preformatted code blocks */
+pre {
+  background-color: var(--curie-code-block-bg) !important;
+  border: 1px solid var(--curie-code-block-border) !important;
+  border-radius: 0.75rem;
+  padding: 0.875rem 1rem;
+  margin: 1rem 0;
+  overflow-x: auto;
+}
+
+pre code {
+  color: var(--curie-text-primary);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.85em;
+  line-height: 1.6;
+}
+
+/* ==========================================================================
+   Chat Typography & Spacing System (.curie-chat-prose)
+   Ensures headers, paragraphs, and lists have distinct breathing room
+   ========================================================================== */
+.curie-chat-prose,
+.curie-prose {
+  color: var(--curie-text-secondary);
+  font-size: 0.8125rem; /* 13px */
+  line-height: 1.65;
+}
+
+/* Paragraph Vertical Spacing */
+.curie-chat-prose p,
+.curie-prose p {
+  margin-top: 0;
+  margin-bottom: var(--curie-space-p-bottom);
+  line-height: 1.65;
+}
+
+.curie-chat-prose p:last-child,
+.curie-prose p:last-child {
+  margin-bottom: 0;
+}
+
+/* Heading Spacing & Typography */
+.curie-chat-prose h1,
+.curie-prose h1 {
+  margin-top: var(--curie-space-h-top);
+  margin-bottom: var(--curie-space-h-bottom);
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #ffffff;
+  border-bottom: 1px solid rgba(51, 65, 85, 0.45);
+  padding-bottom: 0.25rem;
+  letter-spacing: -0.02em;
+}
+
+.curie-chat-prose h2,
+.curie-prose h2 {
+  margin-top: 1.125rem;
+  margin-bottom: var(--curie-space-h-bottom);
+  font-size: 1.025rem;
+  font-weight: 600;
+  color: #f1f5f9;
+  letter-spacing: -0.01em;
+}
+
+.curie-chat-prose h3,
+.curie-prose h3 {
+  margin-top: 1rem;
+  margin-bottom: 0.375rem;
+  font-size: 0.925rem;
+  font-weight: 600;
+  color: #a5b4fc; /* Indigo-tinted subheadings */
+}
+
+.curie-chat-prose h4,
+.curie-prose h4 {
+  margin-top: 0.875rem;
+  margin-bottom: 0.25rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #cbd5e1;
+}
+
+/* First heading in a block doesn't need exaggerated top margin */
+.curie-chat-prose > :first-child:is(h1, h2, h3, h4),
+.curie-prose > :first-child:is(h1, h2, h3, h4) {
+  margin-top: 0.25rem;
+}
+
+/* Lists */
+.curie-chat-prose ul,
+.curie-prose ul {
+  list-style-type: disc;
+  margin-top: 0.5rem;
+  margin-bottom: var(--curie-space-list-bottom);
+  padding-left: 1.35rem;
+}
+
+.curie-chat-prose ol,
+.curie-prose ol {
+  list-style-type: decimal;
+  margin-top: 0.5rem;
+  margin-bottom: var(--curie-space-list-bottom);
+  padding-left: 1.35rem;
+}
+
+.curie-chat-prose li,
+.curie-prose li {
+  margin-bottom: var(--curie-space-li-gap);
+  line-height: 1.6;
+}
+
+.curie-chat-prose li:last-child,
+.curie-prose li:last-child {
+  margin-bottom: 0;
+}
+
+/* Blockquotes */
+.curie-chat-prose blockquote,
+.curie-prose blockquote {
+  margin: 0.875rem 0;
+  padding: 0.5rem 0.875rem;
+  border-left: 3px solid var(--curie-accent-primary);
+  background-color: rgba(30, 41, 59, 0.4);
+  border-radius: 0 0.5rem 0.5rem 0;
+  color: var(--curie-text-muted);
+  font-style: italic;
+}
+
+/* Tables */
+.curie-chat-prose table,
+.curie-prose table {
+  width: 100%;
+  margin: 0.875rem 0;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+.curie-chat-prose th,
+.curie-prose th {
+  background-color: rgba(15, 23, 42, 0.9);
+  color: #f8fafc;
+  font-weight: 600;
+  border: 1px solid var(--curie-border-default);
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+}
+
+.curie-chat-prose td,
+.curie-prose td {
+  border: 1px solid var(--curie-border-subtle);
+  padding: 0.425rem 0.75rem;
+  color: var(--curie-text-secondary);
+}
+
+.curie-chat-prose tr:nth-child(even) td,
+.curie-prose tr:nth-child(even) td {
+  background-color: rgba(15, 23, 42, 0.4);
+}
+
+/* Horizontal Rule */
+.curie-chat-prose hr,
+.curie-prose hr {
+  margin: 1.25rem 0;
+  border: 0;
+  border-top: 1px solid var(--curie-border-subtle);
+}
+
+/* ==========================================================================
+   LaTeX & KaTeX Mathematical Display Styling
+   ========================================================================== */
+.katex {
+  font-size: 1.05em !important;
+  text-rendering: auto;
+  color: var(--curie-math-text);
+}
+
+/* Inline math formula margin */
+.katex:not(.katex-display .katex) {
+  padding: 0 0.15rem;
+  display: inline-block;
+  vertical-align: baseline;
+}
+
+/* Display / Block math ($$ ... $$) container */
+.katex-display {
+  margin: 1rem 0 !important;
+  padding: 0.75rem 1rem !important;
+  background-color: var(--curie-math-bg) !important;
+  border: 1px solid var(--curie-math-border) !important;
+  border-radius: 0.75rem !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+}
+
+.katex-display::-webkit-scrollbar {
+  height: 4px;
+}
+
+.katex-display::-webkit-scrollbar-thumb {
+  background: rgba(99, 102, 241, 0.4);
+  border-radius: 2px;
+}
+
+/* Error math fallback */
+.katex-error {
+  color: #fb7185 !important;
+  background: rgba(244, 63, 94, 0.1);
+  padding: 0.1rem 0.3rem;
+  border-radius: 0.25rem;
+  font-family: monospace;
+}
+
+/* ==========================================================================
+   Custom Scrollbars & UI Enhancements
+   ========================================================================== */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.2);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.4);
+}

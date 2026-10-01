@@ -1,7 +1,9 @@
 import { useMemo, useState, useRef, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
 import rehypeRaw from "rehype-raw";
+import rehypeKatex from "rehype-katex";
 import {
   LuCopy,
   LuCheck,
@@ -20,6 +22,7 @@ import {
 import { TbFileTypePdf } from "react-icons/tb";
 import { useAuth } from "../contexts/AuthContext";
 import { api, TreeNode } from "../api/client";
+import { normalizeLatexDelimiters } from "../utils/mathUtils";
 
 interface MarkdownViewerProps {
   content: string;
@@ -428,7 +431,7 @@ export default function MarkdownViewer({
     // If target is an image, convert directly to Markdown image ![alias](target)
     // so ReactMarkdown directly calls components.img
     const embedRegex = /!\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g;
-    let text = content.replace(embedRegex, (_, target, alias) => {
+    let text = normalizeLatexDelimiters(content).replace(embedRegex, (_, target, alias) => {
       const cleanTarget = target.trim();
       const label = alias ? alias.trim() : cleanTarget;
       if (isImageFile(cleanTarget)) {
@@ -515,8 +518,8 @@ export default function MarkdownViewer({
       )}
 
       <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
-        rehypePlugins={[rehypeRaw]}
+        remarkPlugins={[remarkGfm, remarkMath]}
+        rehypePlugins={[rehypeRaw, rehypeKatex]}
         urlTransform={(url) => url}
         components={{
           img: ({ src, alt, ...props }: any) => {
@@ -767,10 +770,12 @@ export default function MarkdownViewer({
           },
           details: TranscriptionDetails,
           code: ({ node, inline, className, children, ...props }: any) => {
-            if (inline) {
+            const match = /language-(\w+)/.exec(className || "");
+            const isInline = inline || (!match && !String(children).includes("\n"));
+            if (isInline) {
               return (
                 <code
-                  className="px-1.5 py-0.5 rounded bg-slate-800/80 text-indigo-300 text-xs font-mono border border-slate-700/50"
+                  className="px-1.5 py-0.5 rounded bg-slate-800/85 text-rose-400 text-xs font-mono font-medium border border-slate-700/60 shadow-sm"
                   {...props}
                 >
                   {children}

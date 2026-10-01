@@ -2,6 +2,8 @@ import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { api, TreeNode, AiConversation } from "../api/client";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
 import {
   LuSparkles,
   LuSend,
@@ -24,6 +26,7 @@ import {
   LuChevronLeft,
 } from "react-icons/lu";
 import { TbFileTypePdf } from "react-icons/tb";
+import { normalizeLatexDelimiters } from "../utils/mathUtils";
 
 interface Message {
   role: "user" | "assistant" | "system";
@@ -842,9 +845,12 @@ export default function AiChatPanel({
                       )}
 
                       {m.role === "assistant" ? (
-                        <div className="prose prose-invert prose-indigo text-xs max-w-none space-y-2">
-                          <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                            {m.content}
+                        <div className="curie-chat-prose max-w-none">
+                          <ReactMarkdown
+                            remarkPlugins={[remarkGfm, remarkMath]}
+                            rehypePlugins={[rehypeKatex]}
+                          >
+                            {normalizeLatexDelimiters(m.content)}
                           </ReactMarkdown>
                         </div>
                       ) : (

@@ -21,6 +21,8 @@
   "dependencies": {
     "@fastify/static": "^10.1.4",
     "@google/genai": "^2.25.0",
+    "@resvg/resvg-js": "^2.6.2",
+    "@twango/sdocx": "^1.1.0",
     "adm-zip": "^0.6.1",
     "better-sqlite3": "^13.0.3",
     "drizzle-kit": "^0.31.11",

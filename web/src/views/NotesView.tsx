@@ -137,15 +137,48 @@ export default function NotesView({ onActiveContextChange }: NotesViewProps = {}
     if (!activeVault) return;
     try {
       setLoadingTree(true);
+      const sdocxJobs: string[] = [];
+
       for (const file of Array.from(files)) {
-        await api.uploadBinary(
-          activeVault.id,
-          file.name,
-          file,
-          file.type || "application/octet-stream"
-        );
+        if (file.name.toLowerCase().endsWith(".sdocx")) {
+          // Route Samsung Note archives directly through the ingestion pipeline
+          const res = await api.ingestSdocx(activeVault.id, file, file.name);
+          if (res.jobId) {
+            sdocxJobs.push(res.jobId);
+          }
+        } else {
+          await api.uploadBinary(
+            activeVault.id,
+            file.name,
+            file,
+            file.type || "application/octet-stream"
+          );
+        }
       }
-      await loadTree();
+
+      // If sdocx ingestion jobs were dispatched, poll briefly and auto-navigate to the new note
+      if (sdocxJobs.length > 0) {
+        let lastTargetNote: string | undefined;
+        for (let attempt = 0; attempt < 6; attempt++) {
+          await new Promise((r) => setTimeout(r, 2000));
+          const checks = await Promise.all(
+            sdocxJobs.map((jobId) => api.getIngestionJob(activeVault.id, jobId).catch(() => null))
+          );
+          const allDone = checks.every((j) => j && (j.status === "completed" || j.status === "failed"));
+          const completedJob = checks.find((j) => j && j.status === "completed" && j.targetNotePath);
+          if (completedJob) {
+            lastTargetNote = completedJob.targetNotePath;
+          }
+          if (allDone) break;
+        }
+
+        await loadTree();
+        if (lastTargetNote) {
+          await handleSelectFile(lastTargetNote);
+        }
+      } else {
+        await loadTree();
+      }
     } catch (err: any) {
       console.error("Failed to upload file:", err);
       alert(`Upload failed: ${err.message || String(err)}`);
@@ -314,7 +347,13 @@ export default function NotesView({ onActiveContextChange }: NotesViewProps = {}
           ) : isImage ? (
             <ImageViewer vaultId={activeVault.id} filePath={activePath} />
           ) : !isText ? (
-            <BinaryFileViewer vaultId={activeVault.id} filePath={activePath} />
+            <BinaryFileViewer
+              vaultId={activeVault.id}
+              filePath={activePath}
+              tree={tree}
+              onOpenNote={handleSelectFile}
+              onConverted={loadTree}
+            />
           ) : (
             <NoteEditor
               key={activePath}

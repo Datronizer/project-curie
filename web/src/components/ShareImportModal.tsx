@@ -82,12 +82,20 @@ export default function ShareImportModal({
           : "";
         const destinationPath = `${folderPrefix}${file.name}`;
 
-        await api.uploadBinary(
-          selectedVaultId,
-          destinationPath,
-          blob,
-          file.mimeType || "application/octet-stream"
-        );
+        if (file.name.toLowerCase().endsWith(".sdocx")) {
+          await api.ingestSdocx(
+            selectedVaultId,
+            blob,
+            file.name
+          );
+        } else {
+          await api.uploadBinary(
+            selectedVaultId,
+            destinationPath,
+            blob,
+            file.mimeType || "application/octet-stream"
+          );
+        }
         count++;
         setSuccessCount(count);
       }

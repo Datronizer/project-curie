@@ -1,4 +1,6 @@
 import { createWorker } from "tesseract.js";
+import { Resvg } from "@resvg/resvg-js";
+import { GoogleGenAI } from "@google/genai";
 
 export interface TranscribedLine
 {
@@ -11,7 +13,7 @@ export interface TranscriptionResult
     text: string;
     confidence: number;
     lines: TranscribedLine[];
-    engine: "tesseract" | "vision-llm" | "fallback";
+    engine: "gemini" | "vision-llm" | "tesseract" | "fallback";
 }
 
 function isValidRasterImage(buf: Buffer): boolean
@@ -32,23 +34,59 @@ export class OcrService
 {
     private ollamaEndpoint?: string;
     private ollamaModel?: string;
+    private geminiClient?: GoogleGenAI;
 
     constructor()
     {
         this.ollamaEndpoint = process.env.OLLAMA_HOST || process.env.OLLAMA_BASE_URL || process.env.LLM_ENDPOINT;
         this.ollamaModel = process.env.OLLAMA_VISION_MODEL || "llava";
+
+        const geminiApiKey = process.env.GEMINI_API_KEY;
+        if (geminiApiKey)
+        {
+            this.geminiClient = new GoogleGenAI({ apiKey: geminiApiKey });
+        }
     }
 
     /**
-     * Transcribes an image or raster buffer using local lightweight Tesseract OCR,
-     * with optional Vision LLM enhancement if configured.
+     * Transcribes an SVG string by rasterizing it to PNG and running OCR.
+     */
+    public async transcribeSvg(
+        svgString: string,
+        options?: { minConfidence?: number; pageIndex?: number }
+    ): Promise<TranscriptionResult>
+    {
+        try
+        {
+            const resvg = new Resvg(svgString, {
+                fitTo: { mode: "width", value: 1200 },
+                font: { loadSystemFonts: true },
+            });
+            const pngBuffer = resvg.render().asPng();
+            return this.transcribeImage(pngBuffer, options);
+        }
+        catch (err)
+        {
+            console.warn(`[OCR] Failed to rasterize SVG for OCR on page ${options?.pageIndex}:`, err);
+            return {
+                text: "",
+                confidence: 0,
+                lines: [],
+                engine: "fallback",
+            };
+        }
+    }
+
+    /**
+     * Transcribes an image or raster buffer using Gemini Vision, local Vision LLM,
+     * or local lightweight Tesseract OCR.
      */
     public async transcribeImage(
         imageBuffer: Buffer,
         options?: { minConfidence?: number; pageIndex?: number }
     ): Promise<TranscriptionResult>
     {
-        const minConfidence = options?.minConfidence ?? 40;
+        const minConfidence = options?.minConfidence ?? 30;
 
         if (!isValidRasterImage(imageBuffer))
         {
@@ -60,7 +98,24 @@ export class OcrService
             };
         }
 
-        // Try Vision LLM first if configured
+        // 1. Try Gemini Vision if configured
+        if (this.geminiClient)
+        {
+            try
+            {
+                const geminiResult = await this.transcribeWithGemini(imageBuffer);
+                if (geminiResult && geminiResult.text.trim())
+                {
+                    return geminiResult;
+                }
+            }
+            catch (geminiErr)
+            {
+                console.warn("[OCR] Gemini transcription skipped or failed, falling back to local OCR:", geminiErr);
+            }
+        }
+
+        // 2. Try local Vision LLM if configured
         if (this.ollamaEndpoint)
         {
             try
@@ -77,7 +132,7 @@ export class OcrService
             }
         }
 
-        // Tesseract.js local worker
+        // 3. Tesseract.js local worker
         let worker: any = null;
         try
         {
@@ -86,26 +141,17 @@ export class OcrService
             await worker.terminate();
             worker = null;
 
-            const lines: TranscribedLine[] = [];
-            const rawLines = ret.data.lines || [];
-
-            for (const line of rawLines)
-            {
-                const lineText = (line.text || "").trim();
-                const confidence = line.confidence || 0;
-
-                // Filter out low-confidence noise or empty strings
-                if (lineText && confidence >= minConfidence)
-                {
-                    lines.push({ text: lineText, confidence });
-                }
-            }
-
             const overallConfidence = ret.data.confidence || 0;
-            const fullText = lines.map((l) => l.text).join("\n").trim();
+            const rawText = (ret.data.text || "").trim();
+            const textLines = rawText.split("\n").map((l: string) => l.trim()).filter(Boolean);
+
+            const lines: TranscribedLine[] = textLines.map((lineText: string) => ({
+                text: lineText,
+                confidence: overallConfidence,
+            }));
 
             return {
-                text: fullText,
+                text: rawText,
                 confidence: overallConfidence,
                 lines,
                 engine: "tesseract",
@@ -125,6 +171,52 @@ export class OcrService
                 engine: "fallback",
             };
         }
+    }
+
+    /**
+     * Gemini Vision transcription using gemini-2.5-flash
+     */
+    private async transcribeWithGemini(imageBuffer: Buffer): Promise<TranscriptionResult | null>
+    {
+        if (!this.geminiClient) return null;
+
+        const base64Image = imageBuffer.toString("base64");
+        const mimeType = imageBuffer[0] === 0x89 ? "image/png" : "image/jpeg";
+
+        const response = await this.geminiClient.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: [
+                {
+                    role: "user",
+                    parts: [
+                        {
+                            inlineData: {
+                                mimeType,
+                                data: base64Image,
+                            },
+                        },
+                        {
+                            text: "Transcribe all handwritten and typed text from this note page accurately. Preserve line breaks. Output ONLY the extracted text with no introductory or explanatory remarks.",
+                        },
+                    ],
+                },
+            ],
+        });
+
+        const text = (response.text || "").trim();
+        if (!text) return null;
+
+        const lines = text.split("\n").map((line) => ({
+            text: line.trim(),
+            confidence: 95,
+        })).filter((l) => l.text.length > 0);
+
+        return {
+            text,
+            confidence: 95,
+            lines,
+            engine: "gemini",
+        };
     }
 
     /**

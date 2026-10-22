@@ -161,12 +161,31 @@ export default async function fileRoutes(app: FastifyInstance)
             await app.syncStateRepo.updateState(effectiveDeviceId, result.file.id, result.hash);
         }
 
+        // Auto-enqueue ingestion job for Samsung Notes .sdocx archives
+        let ingestionJobId: string | undefined;
+        if (relativePath.toLowerCase().endsWith(".sdocx") && !relativePath.startsWith(".curie/"))
+        {
+            try
+            {
+                const job = await app.ingestService.enqueueJob(vaultId, {
+                    existingVaultPath: relativePath,
+                    originalFileName: relativePath.split("/").pop() || "note.sdocx",
+                });
+                ingestionJobId = job.id;
+            }
+            catch (ingestErr)
+            {
+                req.log.warn({ err: ingestErr }, "Failed to auto-enqueue ingestion job for sdocx upload");
+            }
+        }
+
         return reply.status(200).send({
             success: true,
             file: result.file,
             hash: result.hash,
             size: result.size,
             conflictCopyPath: result.conflictCopyPath,
+            ingestionJobId,
         });
     };
 
@@ -198,6 +217,22 @@ export default async function fileRoutes(app: FastifyInstance)
         {
             await app.syncStateRepo.updateState(effectiveDeviceId, result.file.id, hash);
         }
+
+        if (path.toLowerCase().endsWith(".sdocx") && !path.startsWith(".curie/"))
+        {
+            try
+            {
+                await app.ingestService.enqueueJob(vaultId, {
+                    existingVaultPath: path,
+                    originalFileName: path.split("/").pop() || "note.sdocx",
+                });
+            }
+            catch (ingestErr)
+            {
+                req.log.warn({ err: ingestErr }, "Failed to auto-enqueue ingestion job for sdocx upload");
+            }
+        }
+
         return result;
     };
 

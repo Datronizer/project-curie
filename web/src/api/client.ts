@@ -46,6 +46,21 @@ export interface AiConversation {
   updatedAt: string | number | Date;
 }
 
+export interface IngestionJob {
+  id: string;
+  vaultId: string;
+  status: "queued" | "processing" | "completed" | "failed";
+  progress: number;
+  stage?: string;
+  sourceFileName: string;
+  sourceFilePath?: string;
+  targetNotePath?: string;
+  error?: string;
+  metadata?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface AiMessage {
   id: string;
   conversationId: string;
@@ -309,6 +324,52 @@ class ApiClient {
       method: "DELETE",
       headers,
     });
+  }
+
+  // SDOCX Ingestion
+  public async ingestSdocx(
+    vaultId: string,
+    data: Blob | File | ArrayBuffer | Uint8Array,
+    filename: string = "note.sdocx"
+  ): Promise<{ jobId: string; status: string }> {
+    const url = this.resolveUrl(
+      `/vaults/${vaultId}/ingest/sdocx?filename=${encodeURIComponent(filename)}`
+    );
+    const headers: Record<string, string> = {
+      "content-type": "application/octet-stream",
+      "x-filename": filename,
+    };
+    if (this.token) {
+      headers["authorization"] = `Bearer ${this.token}`;
+    }
+
+    const res = await fetch(url, {
+      method: "POST",
+      headers,
+      body: data as any,
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error?.message || `Failed to enqueue sdocx ingestion: ${res.statusText}`);
+    }
+
+    const resData = await res.json();
+    return { jobId: resData.jobId, status: resData.status };
+  }
+
+  public async getIngestionJob(vaultId: string, jobId: string): Promise<IngestionJob> {
+    const res = await this.request<{ success: boolean; job: IngestionJob }>(
+      `/vaults/${vaultId}/ingest/jobs/${jobId}`
+    );
+    return res.job;
+  }
+
+  public async listIngestionJobs(vaultId: string): Promise<IngestionJob[]> {
+    const res = await this.request<{ success: boolean; jobs: IngestionJob[] }>(
+      `/vaults/${vaultId}/ingest/jobs`
+    );
+    return res.jobs;
   }
 
   // Devices

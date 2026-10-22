@@ -47,8 +47,8 @@
   --curie-code-inline-border: rgba(71, 85, 105, 0.55);
 
   /* Code Blocks (pre > code) */
-  --curie-code-block-bg: #090d16;
-  --curie-code-block-border: rgba(51, 65, 85, 0.7);
+  --curie-code-block-bg: transparent;
+  --curie-code-block-border: transparent;
 
   /* ==========================================================================
      LaTeX & KaTeX Tokens
@@ -89,13 +89,12 @@
   vertical-align: baseline;
 }
 
-/* Preformatted code blocks */
+/* Preformatted code blocks (triple backtick delimiters) */
 pre {
-  background-color: var(--curie-code-block-bg) !important;
-  border: 1px solid var(--curie-code-block-border) !important;
-  border-radius: 0.75rem;
-  padding: 0.875rem 1rem;
-  margin: 1rem 0;
+  background: transparent !important;
+  border: none !important;
+  padding: 0;
+  margin: 0.75rem 0;
   overflow-x: auto;
 }
 

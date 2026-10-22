@@ -24,6 +24,7 @@ import {
   LuHistory,
   LuPlus,
   LuChevronLeft,
+  LuFolder,
 } from "react-icons/lu";
 import { TbFileTypePdf } from "react-icons/tb";
 import { normalizeLatexDelimiters } from "../utils/mathUtils";
@@ -818,14 +819,15 @@ export default function AiChatPanel({
                     >
                       {/* Attachments chip list if user sent any */}
                       {m.attachments && m.attachments.length > 0 && (
-                        <div className="mb-2 flex flex-wrap gap-1">
+                        <div className="mb-2 flex flex-wrap gap-1.5">
                           {m.attachments.map((p, aIdx) => (
                             <span
                               key={aIdx}
                               className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-md bg-white/10 text-indigo-100 font-mono"
+                              title={p}
                             >
-                              <LuPaperclip className="w-2.5 h-2.5" />
-                              <span>{p.split("/").pop()}</span>
+                              <LuPaperclip className="w-2.5 h-2.5 flex-shrink-0" />
+                              <span className="truncate max-w-[240px]">{p}</span>
                             </span>
                           ))}
                         </div>
@@ -953,18 +955,27 @@ export default function AiChatPanel({
                   return (
                     <span
                       key={p}
-                      className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-lg bg-indigo-950/60 border border-indigo-500/30 text-indigo-200"
+                      className="inline-flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-lg bg-indigo-950/60 border border-indigo-500/30 text-indigo-200"
+                      title={p}
                     >
                       {isPdf ? (
-                        <TbFileTypePdf className="w-3 h-3 text-rose-400" />
+                        <TbFileTypePdf className="w-3.5 h-3.5 text-rose-400 flex-shrink-0" />
                       ) : (
-                        <LuFileText className="w-3 h-3 text-indigo-400" />
+                        <LuFileText className="w-3.5 h-3.5 text-indigo-400 flex-shrink-0" />
                       )}
-                      <span className="max-w-[140px] truncate">{p.split("/").pop()}</span>
+                      <div className="flex flex-col min-w-0 max-w-[200px]">
+                        <span className="truncate font-medium">{p.split("/").pop()}</span>
+                        {p.includes("/") && (
+                          <span className="truncate text-[9px] text-indigo-400/80 font-mono">
+                            {p.slice(0, p.lastIndexOf("/"))}
+                          </span>
+                        )}
+                      </div>
                       <button
                         type="button"
                         onClick={() => toggleAttachment(p)}
-                        className="ml-0.5 text-slate-400 hover:text-white"
+                        className="ml-1 text-slate-400 hover:text-white"
+                        title="Remove attachment"
                       >
                         <LuX className="w-3 h-3" />
                       </button>
@@ -1028,12 +1039,17 @@ export default function AiChatPanel({
         {/* Attachment Selection Modal */}
         {showAttachModal && (
           <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-sm flex flex-col max-h-[500px] shadow-2xl overflow-hidden">
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg flex flex-col max-h-[520px] shadow-2xl overflow-hidden">
               <div className="p-3.5 border-b border-slate-800 flex items-center justify-between">
-                <h4 className="text-xs font-semibold text-white flex items-center gap-1.5">
-                  <LuPaperclip className="w-3.5 h-3.5 text-indigo-400" />
-                  <span>Attach Vault File to Context</span>
-                </h4>
+                <div className="flex items-center space-x-2">
+                  <LuPaperclip className="w-4 h-4 text-indigo-400" />
+                  <h4 className="text-xs font-semibold text-white">Attach Vault File to Context</h4>
+                  {selectedAttachments.length > 0 && (
+                    <span className="px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 text-[10px] font-mono">
+                      {selectedAttachments.length} selected
+                    </span>
+                  )}
+                </div>
                 <button
                   type="button"
                   onClick={() => setShowAttachModal(false)}
@@ -1044,21 +1060,35 @@ export default function AiChatPanel({
               </div>
 
               <div className="p-2.5 border-b border-slate-800/80 bg-slate-950/60">
-                <div className="flex items-center space-x-2 bg-slate-900 border border-slate-800 rounded-xl px-2.5 py-1.5">
+                <div className="flex items-center space-x-2 bg-slate-900 border border-slate-800 rounded-xl px-2.5 py-1.5 focus-within:border-indigo-500/50">
                   <LuSearch className="w-3.5 h-3.5 text-slate-500" />
                   <input
                     type="text"
-                    placeholder="Filter vault files..."
+                    placeholder="Search files by name or folder path..."
                     value={searchAttachQuery}
                     onChange={(e) => setSearchAttachQuery(e.target.value)}
                     className="w-full bg-transparent border-0 text-xs text-white placeholder-slate-500 focus:outline-none"
+                    autoFocus
                   />
+                  {searchAttachQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchAttachQuery("")}
+                      className="text-slate-500 hover:text-slate-300"
+                    >
+                      <LuX className="w-3 h-3" />
+                    </button>
+                  )}
                 </div>
               </div>
 
-              <div className="flex-1 overflow-y-auto p-2 space-y-1 text-xs">
+              <div className="flex-1 overflow-y-auto p-2 space-y-1.5 text-xs">
                 {filteredAttachFiles.length === 0 ? (
-                  <div className="p-4 text-center text-slate-500">No files found.</div>
+                  <div className="p-6 text-center text-slate-500">
+                    <LuFileText className="w-6 h-6 mx-auto mb-2 text-slate-600" />
+                    <p>No matching files found</p>
+                    <p className="text-[11px] text-slate-600 mt-0.5">Try searching with a different name or path</p>
+                  </div>
                 ) : (
                   filteredAttachFiles.map((f) => {
                     const isSelected = selectedAttachments.includes(f.path);
@@ -1068,19 +1098,28 @@ export default function AiChatPanel({
                         key={f.path}
                         type="button"
                         onClick={() => toggleAttachment(f.path)}
-                        className={`w-full text-left p-2 rounded-xl flex items-center justify-between transition ${
+                        className={`w-full text-left p-2.5 rounded-xl flex items-center justify-between transition ${
                           isSelected
                             ? "bg-indigo-600/20 border border-indigo-500/40 text-indigo-200"
-                            : "hover:bg-slate-800 text-slate-300"
+                            : "hover:bg-slate-800/70 text-slate-300 border border-transparent"
                         }`}
+                        title={f.path}
                       >
-                        <div className="flex items-center space-x-2 truncate">
+                        <div className="flex items-center space-x-2.5 truncate min-w-0 flex-1 mr-2">
                           {isPdf ? (
-                            <TbFileTypePdf className="w-3.5 h-3.5 text-rose-400 flex-shrink-0" />
+                            <TbFileTypePdf className="w-4 h-4 text-rose-400 flex-shrink-0" />
                           ) : (
-                            <LuFileText className="w-3.5 h-3.5 text-indigo-400 flex-shrink-0" />
+                            <LuFileText className="w-4 h-4 text-indigo-400 flex-shrink-0" />
                           )}
-                          <span className="truncate">{f.name}</span>
+                          <div className="flex flex-col min-w-0 flex-1 truncate">
+                            <span className="truncate text-xs font-medium text-slate-200">
+                              {f.name}
+                            </span>
+                            <span className="truncate text-[10px] text-slate-400 font-mono flex items-center gap-1 mt-0.5">
+                              <LuFolder className="w-2.5 h-2.5 text-slate-500 flex-shrink-0" />
+                              <span className="truncate">{f.path}</span>
+                            </span>
+                          </div>
                         </div>
                         <div
                           className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 ${
@@ -1097,11 +1136,14 @@ export default function AiChatPanel({
                 )}
               </div>
 
-              <div className="p-3 border-t border-slate-800 bg-slate-950/60 flex justify-end">
+              <div className="p-3 border-t border-slate-800 bg-slate-950/60 flex items-center justify-between">
+                <span className="text-[10px] text-slate-500">
+                  {filteredAttachFiles.length} file{filteredAttachFiles.length === 1 ? "" : "s"} found
+                </span>
                 <button
                   type="button"
                   onClick={() => setShowAttachModal(false)}
-                  className="px-4 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium transition"
+                  className="px-4 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium transition cursor-pointer"
                 >
                   Done ({selectedAttachments.length} selected)
                 </button>

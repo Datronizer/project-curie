@@ -18,11 +18,20 @@ import {
   LuMail,
   LuPhone,
   LuExternalLink,
+  LuSlidersHorizontal,
+  LuTag,
+  LuCalendar,
+  LuClock,
+  LuBookmark,
+  LuChevronDown,
+  LuChevronRight,
+  LuFolder,
 } from "react-icons/lu";
 import { TbFileTypePdf } from "react-icons/tb";
 import { useAuth } from "../contexts/AuthContext";
 import { api, TreeNode } from "../api/client";
 import { normalizeLatexDelimiters } from "../utils/mathUtils";
+import { parseFrontmatter } from "../utils/frontmatter";
 
 interface MarkdownViewerProps {
   content: string;
@@ -392,6 +401,159 @@ function getHeadingId(children: any): string {
   return text.toLowerCase().replace(/[^\w\s-]/g, "").trim().replace(/\s+/g, "-");
 }
 
+function MetadataSection({
+  metadata,
+  onNavigateWikiLink,
+}: {
+  metadata: Record<string, any>;
+  onNavigateWikiLink: (target: string) => void;
+}) {
+  const [isOpen, setIsOpen] = useState(true);
+  const entries = Object.entries(metadata);
+  if (entries.length === 0) return null;
+
+  const renderValue = (key: string, val: any) => {
+    if (typeof val === "boolean") {
+      return (
+        <span
+          className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-medium border ${
+            val
+              ? "bg-emerald-950/60 border-emerald-500/40 text-emerald-300"
+              : "bg-slate-900 border-slate-800 text-slate-400"
+          }`}
+        >
+          <span
+            className={`w-1.5 h-1.5 rounded-full ${
+              val ? "bg-emerald-400 animate-pulse" : "bg-slate-500"
+            }`}
+          />
+          {val ? "true" : "false"}
+        </span>
+      );
+    }
+
+    if (Array.isArray(val)) {
+      if (val.length === 0) {
+        return <span className="text-slate-500 italic text-xs">Empty list</span>;
+      }
+      return (
+        <div className="flex flex-wrap gap-1.5 items-center justify-end">
+          {val.map((item, idx) => {
+            const strItem = String(item);
+            const isTag = key.toLowerCase().includes("tag");
+            if (isTag) {
+              return (
+                <span
+                  key={idx}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-950/60 border border-indigo-500/30 text-indigo-300 text-[11px] font-medium"
+                >
+                  <LuTag className="w-2.5 h-2.5 text-indigo-400" />
+                  <span>{strItem.startsWith("#") ? strItem : `#${strItem}`}</span>
+                </span>
+              );
+            }
+            return (
+              <span
+                key={idx}
+                className="inline-flex items-center px-2 py-0.5 rounded-md bg-slate-900 border border-slate-800 text-slate-300 text-[11px] font-mono"
+              >
+                {strItem}
+              </span>
+            );
+          })}
+        </div>
+      );
+    }
+
+    if (typeof val === "string") {
+      // Check if it's an ISO date or timestamp
+      if (/^\d{4}-\d{2}-\d{2}/.test(val)) {
+        return (
+          <span className="inline-flex items-center gap-1.5 text-indigo-300 font-mono text-xs">
+            <LuCalendar className="w-3 h-3 text-indigo-400" />
+            <span>{val}</span>
+          </span>
+        );
+      }
+      // Check if wikilink [[target]]
+      if (val.startsWith("[[") && val.endsWith("]]")) {
+        const target = val.slice(2, -2).trim();
+        return (
+          <button
+            type="button"
+            onClick={() => onNavigateWikiLink(target)}
+            className="inline-flex items-center gap-1 text-indigo-400 hover:text-indigo-300 hover:underline text-xs cursor-pointer"
+          >
+            <LuFileText className="w-3 h-3" />
+            <span>{target}</span>
+          </button>
+        );
+      }
+      return <span className="text-xs text-slate-200 select-text">{val}</span>;
+    }
+
+    return <span className="text-xs text-slate-200 font-mono">{String(val)}</span>;
+  };
+
+  const getKeyIcon = (key: string) => {
+    const k = key.toLowerCase();
+    if (k.includes("tag")) return <LuTag className="w-3 h-3 text-indigo-400" />;
+    if (k.includes("date") || k.includes("time") || k.includes("at"))
+      return <LuClock className="w-3 h-3 text-amber-400" />;
+    if (k.includes("source") || k.includes("path") || k.includes("dir") || k.includes("folder"))
+      return <LuFolder className="w-3 h-3 text-emerald-400" />;
+    if (k.includes("title") || k.includes("name"))
+      return <LuFileText className="w-3 h-3 text-sky-400" />;
+    if (k.includes("alias")) return <LuBookmark className="w-3 h-3 text-rose-400" />;
+    return <LuSlidersHorizontal className="w-3 h-3 text-slate-400" />;
+  };
+
+  return (
+    <div className="not-prose mb-6 rounded-xl border border-slate-800 bg-slate-900/60 overflow-hidden shadow-sm">
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full px-3.5 py-2.5 bg-slate-950/70 border-b border-slate-800/80 flex items-center justify-between text-xs font-medium text-slate-300 hover:text-white cursor-pointer transition select-none"
+      >
+        <div className="flex items-center space-x-2">
+          <LuSlidersHorizontal className="w-3.5 h-3.5 text-indigo-400" />
+          <span className="font-semibold text-slate-200">Properties</span>
+          <span className="px-1.5 py-0.2 rounded-full bg-slate-800 text-[10px] text-slate-400 font-mono">
+            {entries.length}
+          </span>
+        </div>
+        <div className="flex items-center space-x-1.5 text-slate-500">
+          <span className="text-[11px]">{isOpen ? "Collapse" : "Expand"}</span>
+          {isOpen ? (
+            <LuChevronDown className="w-3.5 h-3.5" />
+          ) : (
+            <LuChevronRight className="w-3.5 h-3.5" />
+          )}
+        </div>
+      </button>
+
+      {isOpen && (
+        <div className="divide-y divide-slate-800/50">
+          {entries.map(([key, val]) => (
+            <div
+              key={key}
+              className="px-3.5 py-2 flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 hover:bg-slate-800/25 transition text-xs"
+            >
+              <div className="flex items-center space-x-2 w-48 flex-shrink-0 text-slate-400 font-mono text-[11px]">
+                {getKeyIcon(key)}
+                <span className="truncate">{key}</span>
+              </div>
+              <div className="flex-1 min-w-0 sm:text-right">
+                {renderValue(key, val)}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function MarkdownViewer({
   content,
   onNavigateWikiLink,
@@ -400,6 +562,11 @@ export default function MarkdownViewer({
 }: MarkdownViewerProps) {
   const { activeVault } = useAuth();
   const [viewMode, setViewMode] = useState<DualViewMode>("split");
+
+  // Extract YAML frontmatter (metadata) delimited by ---
+  const { metadata, body } = useMemo(() => {
+    return parseFrontmatter(content);
+  }, [content]);
 
   // Check if note contains Samsung Notes handwriting or transcription blocks
   const hasHandwritingOrTranscription = useMemo(() => {
@@ -412,13 +579,13 @@ export default function MarkdownViewer({
     );
   }, [content]);
 
-  // Pre-process Obsidian embeds and wikilinks:
+  // Pre-process Obsidian embeds and wikilinks on `body`:
   // ![[Image.png]] -> ![Image.png](Image.png)
   // [[Image.png]] -> ![Image.png](Image.png)
   // ![[Recording.m4a]] -> [Recording.m4a](wikilink_embed:Recording.m4a)
   // [[Note Name]] -> [Note Name](wikilink:Note%20Name)
   const processedContent = useMemo(() => {
-    if (!content) return "";
+    if (!body) return "";
 
     const isImageFile = (target: string) => {
       const ext = target.split(".").pop()?.toLowerCase();
@@ -431,7 +598,7 @@ export default function MarkdownViewer({
     // If target is an image, convert directly to Markdown image ![alias](target)
     // so ReactMarkdown directly calls components.img
     const embedRegex = /!\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g;
-    let text = normalizeLatexDelimiters(content).replace(embedRegex, (_, target, alias) => {
+    let text = normalizeLatexDelimiters(body).replace(embedRegex, (_, target, alias) => {
       const cleanTarget = target.trim();
       const label = alias ? alias.trim() : cleanTarget;
       if (isImageFile(cleanTarget)) {
@@ -453,7 +620,7 @@ export default function MarkdownViewer({
     });
 
     return text;
-  }, [content]);
+  }, [body]);
 
   return (
     <div className={`markdown-body prose prose-invert prose-indigo max-w-none text-slate-200 text-sm leading-relaxed p-6 curie-view-mode-${viewMode}`}>
@@ -465,6 +632,14 @@ export default function MarkdownViewer({
           display: none !important;
         }
       `}</style>
+
+      {/* Frontmatter Metadata Section */}
+      {metadata && Object.keys(metadata).length > 0 && (
+        <MetadataSection
+          metadata={metadata}
+          onNavigateWikiLink={onNavigateWikiLink}
+        />
+      )}
 
       {/* Dual-View Interactive Toolbar */}
       {hasHandwritingOrTranscription && (

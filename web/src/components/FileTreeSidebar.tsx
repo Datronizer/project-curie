@@ -61,14 +61,18 @@ export default function FileTreeSidebar({
       const result: TreeNode[] = [];
       for (const node of nodes) {
         if (node.type === "file") {
-          if (node.name.toLowerCase().includes(query)) {
+          if (node.name.toLowerCase().includes(query) || node.path.toLowerCase().includes(query)) {
             result.push(node);
           }
         } else if (node.type === "dir") {
           const matchingChildren = node.children
             ? filterNodes(node.children)
             : [];
-          if (node.name.toLowerCase().includes(query) || matchingChildren.length > 0) {
+          if (
+            node.name.toLowerCase().includes(query) ||
+            node.path.toLowerCase().includes(query) ||
+            matchingChildren.length > 0
+          ) {
             result.push({
               ...node,
               children: matchingChildren.length > 0 ? matchingChildren : node.children,
@@ -141,15 +145,23 @@ export default function FileTreeSidebar({
       <div key={node.path} className="select-none">
         <button
           onClick={() => onSelectFile(node.path)}
-          className={`w-full flex items-center space-x-2 px-2 py-1 rounded-md text-xs transition text-left ${
+          className={`w-full flex items-center space-x-2 px-2 py-1.5 rounded-md text-xs transition text-left ${
             isSelected
               ? "bg-indigo-600/20 text-indigo-200 font-medium border-l-2 border-indigo-500"
               : "text-slate-300 hover:text-white hover:bg-slate-800/50"
           }`}
           style={{ paddingLeft: `${depth * 14 + 16}px` }}
+          title={node.path}
         >
           {getFileIcon(node.name)}
-          <span className="truncate">{node.name}</span>
+          <div className="flex flex-col min-w-0 flex-1 truncate">
+            <span className="truncate">{node.name}</span>
+            {searchQuery.trim().length > 0 && node.path.includes("/") && (
+              <span className="truncate text-[10px] text-slate-500 font-mono">
+                {node.path.slice(0, node.path.lastIndexOf("/"))}
+              </span>
+            )}
+          </div>
         </button>
       </div>
     );

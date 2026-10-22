@@ -324,4 +324,53 @@ describe("SDOCX Ingestion Pipeline", () =>
 
         await app.close();
     });
+
+    it("8.1 Ingests real Samsung Notes .sdocx archive with high-fidelity vector SVGs and OCR", async () =>
+    {
+        const realFilePath = "/home/sienna/Downloads/Aging 1_261020_100009.sdocx";
+        if (!fs.existsSync(realFilePath))
+        {
+            return;
+        }
+
+        const storageService = new StorageService(testStorageDir);
+        const fileRepo = new FileRepository();
+        const ingestionJobRepo = new IngestionJobRepository();
+        const ingestService = new IngestService(ingestionJobRepo, fileRepo, storageService);
+
+        const realBuffer = fs.readFileSync(realFilePath);
+        const job = await ingestService.enqueueJob(testVaultId, {
+            buffer: realBuffer,
+            originalFileName: path.basename(realFilePath),
+        });
+
+        assert.strictEqual(job.status, "queued");
+        await ingestService.processJob(job.id);
+
+        const finishedJob = await ingestionJobRepo.findById(job.id);
+        assert.ok(finishedJob);
+        assert.strictEqual(finishedJob.status, "completed");
+        assert.strictEqual(finishedJob.targetNotePath, "aging_1.md");
+
+        // Verify target note generated in storage
+        const noteFullPath = storageService.resolvePath(testVaultId, "aging_1.md");
+        assert.ok(fs.existsSync(noteFullPath), "Synthesized markdown note must exist on disk");
+
+        const noteContent = fs.readFileSync(noteFullPath, "utf-8");
+        assert.ok(noteContent.includes("# Aging 1"), "Note must contain extracted Samsung Notes title");
+        assert.ok(noteContent.includes("attachments/aging_1/handwriting_p1.svg"), "Note must embed page 1 vector SVG");
+        assert.ok(noteContent.includes("attachments/aging_1/handwriting_p4.svg"), "Note must embed page 4 vector SVG");
+        assert.ok(noteContent.includes("curie-transcription"), "Note must include transcribed text details");
+
+        // Verify SVG attachments exist and are non-empty
+        const p1SvgPath = storageService.resolvePath(testVaultId, "attachments/aging_1/handwriting_p1.svg");
+        assert.ok(fs.existsSync(p1SvgPath), "Page 1 SVG must exist in attachments");
+        const p1Svg = fs.readFileSync(p1SvgPath, "utf-8");
+        assert.ok(p1Svg.length > 500000, "Page 1 SVG should contain real vector ink");
+        assert.ok(p1Svg.includes("<svg"), "Page 1 must be valid SVG");
+
+        // Verify embedded photo was extracted
+        const imgPath = storageService.resolvePath(testVaultId, "attachments/aging_1/14@files_261012_123251_162.jpg");
+        assert.ok(fs.existsSync(imgPath), "Attached JPG photo must be extracted");
+    });
 });

@@ -174,7 +174,7 @@ export class OcrService
     }
 
     /**
-     * Gemini Vision transcription using gemini-2.5-flash
+     * Gemini Vision transcription using gemini-3.8-flash (or configured model)
      */
     private async transcribeWithGemini(imageBuffer: Buffer): Promise<TranscriptionResult | null>
     {
@@ -182,9 +182,10 @@ export class OcrService
 
         const base64Image = imageBuffer.toString("base64");
         const mimeType = imageBuffer[0] === 0x89 ? "image/png" : "image/jpeg";
+        const model = process.env.GEMINI_VISION_MODEL || process.env.GEMINI_OCR_MODEL || "gemini-3.8-flash";
 
         const response = await this.geminiClient.models.generateContent({
-            model: "gemini-2.5-flash",
+            model,
             contents: [
                 {
                     role: "user",
